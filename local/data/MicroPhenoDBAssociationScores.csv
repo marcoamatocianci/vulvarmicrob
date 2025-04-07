@@ -1,0 +1,86 @@
+No.,Association_ID,Microbe,Disease,Pmid,Position,Tendency,Score
+1,MBP00002371,Vulvovaginal candidiasis,Bacteria vaginosis,29955859,Genitals,Increase,0.88
+2,MBP00002454,Megasphaera,Bacteria vaginosis,28583109,Vagina,Increase,0.82
+3,MBP00000772,Gardnerella,Bacteria vaginosis,20819230,Vagina,Increase,0.8
+4,MBP00005189,Trichomonas vaginalis,Bacteria vaginosis,29955859,Genitals,Increase,0.76
+5,MBP00001128,Megasphaera,Bacteria vaginosis,28583109,Vagina,Increase,0.76
+6,MBP00000311,Sneathia,Bacteria vaginosis,21287345,Vagina,Increase,0.72
+7,MBP00004540,Gardnerella vaginalis,Bacteria vaginosis,27107961,Vagina,Increase,0.72
+8,MBP00004876,Eggerthella,Bacteria vaginosis,28583109,Vagina,Increase,0.7
+9,MBP00001094,Atopobium,Bacteria vaginosis,21287345,Vagina,Increase,0.68
+10,MBP00000695,Eggerthella,Bacteria vaginosis,28583109,Vagina,Increase,0.6
+11,MBP00005153,Prevotella,Bacteria vaginosis,28583109,Vagina,Increase,0.56
+12,MBP00003008,Atopobium vaginae,Bacteria vaginosis,28583109,Vagina,Increase,0.56
+13,MBP00002140,Aerococcus,Bacteria vaginosis,20819230,Vagina,Increase,0.48
+14,MBP00002662,Leptotrichia amnionii,Bacteria vaginosis,21272848,Vagina,Increase,0.48
+15,MBP00001429,Mycoplasma hominis,Bacteria vaginosis,28583109,Vagina,Increase,0.48
+16,MBP00000903,Papillibacter,Bacteria vaginosis,20819230,Vagina,Increase,0.46
+17,MBP00003200,Clostridiales,Bacteria vaginosis,16267323,Vagina,Increase,0.44
+18,MBP00002989,Fusobacteria,Bacteria vaginosis,20819230,Vagina,Increase,0.42
+19,MBP00005338,Leptotrichia,Bacteria vaginosis,28583109,Vagina,Increase,0.42
+20,MBP00001270,Atopobium vaginae,Bacteria vaginosis,28583109,Vagina,Increase,0.4
+21,MBP00005022,Gardnerella vaginalis,Bacteria vaginosis,27107961,Vagina,Increase,0.34
+22,MBP00005101,Candidate division tm7 genomosp,Bacteria vaginosis,18487399,Vagina,Increase,0.32
+23,MBP00001424,Candidate division tm7 single cell isolate tm7b,Bacteria vaginosis,18487399,Vagina,Increase,0.32
+24,MBP00001425,Candidate division tm7 single cell isolate tm7c,Bacteria vaginosis,18487399,Vagina,Increase,0.32
+25,MBP00000961,Dialister micraerophilus,Bacteria vaginosis,22719852,Vagina,Increase,0.32
+26,MBP00003602,Prevotella timonensis,Bacteria vaginosis,22719852,Vagina,Increase,0.32
+27,MBP00003854,Aerococcus christensenii,Bacteria vaginosis,22719852,Vagina,Increase,0.32
+28,MBP00002216,Porphyromonas uenonis,Bacteria vaginosis,18487399,Vagina,Increase,0.32
+29,MBP00002291,Ureaplasma parvum,Bacteria vaginosis,28583109,Vagina,Increase,0.32
+30,MBP00002461,Rhodobaca,Bacteria vaginosis,18717638,Cervix,Increase,0.32
+31,MBP00001817,Enterococcus hirae,Bacteria vaginosis,27790434,Vagina,Increase,0.32
+32,MBP00003362,Clostridium acetobutylicum,Bacteria vaginosis,20819230,Vagina,Increase,0.3
+33,MBP00000046,Actinomycetaceae,Bacteria vaginosis,18717638,Cervix,Increase,0.3
+34,MBP00000282,Mobiluncus mulieris,Bacteria vaginosis,21272848,Vagina,Increase,0.3
+35,MBP00005393,Prevotella disiens,Bacteria vaginosis,21272848,Vagina,Increase,0.3
+36,MBP00005531,Mobiluncus curtisii,Bacteria vaginosis,21272848,Vagina,Increase,0.3
+37,MBP00002771,Allisonella,Bacteria vaginosis,18717638,Cervix,Increase,0.3
+38,MBP00003178,Sneathia sanguinegens,Bacteria vaginosis,21272848,Vagina,Increase,0.3
+39,MBP00002704,Clostridium thermocellum,Bacteria vaginosis,20819230,Vagina,Increase,0.3
+40,MBP00000039,Dialister,Bacteria vaginosis,21272848,Vagina,Increase,0.28
+41,MBP00002783,Propionibacteriaceae,Bacteria vaginosis,18717638,Cervix,Increase,0.28
+42,MBP00002851,Streptobacillus,Bacteria vaginosis,18487399,Vagina,Increase,0.28
+43,MBP00003125,Leptotrichia amnionii,Bacteria vaginosis,21272848,Vagina,Increase,0.26
+44,MBP00001415,Aerococcus,Bacteria vaginosis,20819230,Vagina,Increase,0.26
+45,MBP00002395,Leptotrichiaceae,Bacteria vaginosis,27107961,Vagina,Increase,0.26
+46,MBP00002223,Papillibacter,Bacteria vaginosis,20819230,Vagina,Increase,0.24
+47,MBP00002298,Enterococcus faecium,Bacteria vaginosis,27790434,Vagina,Increase,0.24
+48,MBP00004206,Mobiluncus,Bacteria vaginosis,26385347,Cervix,Increase,0.24
+49,MBP00004546,Prevotella bivia,Bacteria vaginosis,21272848,Vagina,Increase,0.24
+50,MBP00004909,Mobiluncus,Bacteria vaginosis,26385347,Cervix,Increase,0.24
+51,MBP00000896,Prevotella nigrescens,Bacteria vaginosis,21272848,Vagina,Increase,0.24
+52,MBP00001036,Shuttleworthia,Bacteria vaginosis,18487399,Vagina,Increase,0.24
+53,MBP00001068,Olsenella,Bacteria vaginosis,18487399,Vagina,Increase,0.24
+54,MBP00005466,Lactobacillus acidophilus,Bacteria vaginosis,27790434,Vagina,Increase,0.24
+55,MBP00001455,Enterococcus faecalis,Bacteria vaginosis,27790434,Vagina,Increase,0.24
+56,MBP00004190,Coriobacteriaceae,Bacteria vaginosis,18717638,Cervix,Increase,0.22
+57,MBP00004913,Gardnerella,Bacteria vaginosis,20819230,Vagina,Increase,0.22
+58,MBP00002476,Streptococcus anginosus,Bacteria vaginosis,27790434,Vagina,Increase,0.2
+59,MBP00004746,Peptoniphilus,Bacteria vaginosis,18717638,Cervix,Increase,0.2
+60,MBP00003462,Citrobacter,Bacteria vaginosis,18717638,Cervix,Increase,0.18
+61,MBP00002381,Fusobacterium nucleatum,Bacteria vaginosis,20819230,Vagina,Increase,0.18
+62,MBP00002598,Streptococcus sanguinis,Bacteria vaginosis,22719852,Vagina,Increase,0.18
+63,MBP00002631,Actinobacteria,Bacteria vaginosis,20819230,Vagina,Increase,0.18
+64,MBP00002943,Parvimonas,Bacteria vaginosis,18717638,Cervix,Increase,0.18
+65,MBP00004443,Lachnospira,Bacteria vaginosis,18717638,Cervix,Increase,0.18
+66,MBP00005246,Atopobium,Bacteria vaginosis,21287345,Vagina,Increase,0.16
+67,MBP00000326,Peptostreptococcus,Bacteria vaginosis,21272848,Vagina,Increase,0.16
+68,MBP00002148,Acinetobacter,Bacteria vaginosis,18717638,Cervix,Increase,0.16
+69,MBP00004704,Clostridium,Bacteria vaginosis,18487399,Vagina,Increase,0.14
+70,MBP00003662,Porphyromonas,Bacteria vaginosis,18717638,Cervix,Increase,0.14
+71,MBP00004819,Lachnospiraceae,Bacteria vaginosis,27107961,Vagina,Increase,0.12
+72,MBP00000123,Veillonella,Bacteria vaginosis,26385347,Cervix,Increase,0.12
+73,MBP00001676,Streptococcus,Bacteria vaginosis,20819230,Vagina,Increase,0.1
+74,MBP00004459,Prevotella,Bacteria vaginosis,28583109,Vagina,Increase,0.08
+75,MBP00003221,Lactobacillus,Bacteria vaginosis,20819230,Vagina,Decrease,-0.1
+76,MBP00000268,Lactobacillus iners,Bacteria vaginosis,27790434,Vagina,Decrease,-0.2
+77,MBP00000386,Lactobacillus gasseri,Bacteria vaginosis,23617246,Vagina,Decrease,-0.2
+78,MBP00004646,Streptococcus agalactiae,Bacteria vaginosis,27790434,Vagina,Decrease,-0.24
+79,MBP00001988,Lactobacillus,Bacteria vaginosis,20819230,Vagina,Decrease,-0.28
+80,MBP00001850,Lactobacillus  crispatus,Bacteria vaginosis,16267328,Vagina,Decrease,-0.32
+81,MBP00005037,Lactobacillus delbrueckii,Bacteria vaginosis,27790434,Vagina,Decrease,-0.32
+82,MBP00005054,Alloiococcus,Bacteria vaginosis,20819230,Vagina,Decrease,-0.5
+83,MBP00005070,Lactobacillus jensenii,Bacteria vaginosis,28583109,Vagina,Decrease,-0.62
+84,MBP00002336,Lactobacillus iners,Bacteria vaginosis,27790434,Vagina,Decrease,-0.66
+85,MBP00004526,Lactobacillus crispatus,Bacteria vaginosis,27107961,Vagina,Decrease,-0.72

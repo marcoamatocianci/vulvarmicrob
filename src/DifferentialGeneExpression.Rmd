@@ -1,0 +1,419 @@
+---
+title: "Differentially Expressed Genes"
+output: html_document
+date: "2025-03-19"
+---
+
+
+```{r message=FALSE}
+library(ReactomePA)
+library(enrichplot)
+library(dendextend)
+library(org.Hs.eg.db)
+library(clusterProfiler)
+library(openxlsx)
+library(dplyr)
+library(tibble)
+library(edgeR)
+library(patchwork)
+library(ggplot2)
+library(pheatmap)
+library(viridis)
+library(matrixStats)
+```
+```{r echo=FALSE, warning=FALSE}
+script_dir <- dirname(getActiveDocumentContext()$path)
+setwd(script_dir)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = script_dir)
+```
+
+```{r}
+counts <- column_to_rownames(read.xlsx("../local/data/GEP.count.xlsx") ,"Geneid")
+clusters <- read.csv("../results/cluster_col.csv",row.names = 1) %>% dplyr::select(!c(Dominance,samples))
+
+rownames(clusters) <- gsub("H_","",rownames(clusters))
+counts <- counts %>% dplyr::select(rownames(clusters))
+
+dge <- DGEList(counts = counts, group = clusters$Clusters)
+
+# keep <- filterByExpr(dge)
+# dge <- dge[keep, ,keep.lib.sizes=FALSE]
+
+dge <- calcNormFactors(dge,method="TMM")
+counts_norm <- cpm(dge, normalized.lib.sizes=TRUE, log=FALSE)
+counts_norm <- counts_norm[which(rowSums(counts_norm) != 0),]
+prc <- 0.34
+
+
+# Precompute cluster indices and sample thresholds
+unique_clusters <- unique(clusters$Clusters)
+cluster_indices <- lapply(unique_clusters, function(c) which(clusters$Clusters == c))
+names(cluster_indices) <- unique_clusters
+
+nsamp_list <- sapply(cluster_indices, function(idx) prc * length(idx))
+
+# Logical matrix to store gene presence across clusters
+gene_presence <- sapply(cluster_indices, function(idx) {
+  rowSums(counts_norm[, idx] > 0)
+})
+
+# Check if any cluster satisfies the condition for each gene
+genes <- rownames(counts_norm)[apply(gene_presence, 1, function(x) any(x > nsamp_list))]
+
+counts_filt <- counts[genes,]
+dge <- DGEList(counts = counts_filt, group = clusters$Clusters)
+
+design <- model.matrix(~0 + clusters$Clusters) 
+colnames(design) <- gsub("clusters\\$Clusters","",colnames(design))
+dge <- estimateDisp(dge)
+dge <- estimateTagwiseDisp(dge)
+fit <- glmQLFit(dge, design)
+
+contrasts <- makeContrasts("1v2"=cl_1-cl_2,"1v3"=cl_1-cl_3,"1v4"=cl_1-cl_4,"2v3"=cl_2-cl_3,"2v4"=cl_2-cl_4,"3v4"=cl_3-cl_4,levels=c("cl_1","cl_2","cl_3","cl_4"))
+
+DEGList <- list()
+DEGs <- list()
+counts_norm <- cpm(dge, normalized.lib.sizes=TRUE, log=TRUE)
+GO <- list()
+
+for(i in colnames(contrasts)){
+  qlf <- glmQLFTest(fit, contrast = contrasts[,i])
+  top <- topTags(qlf,n = Inf) 
+  top <- filter(top$table,PValue < 0.01 & abs(logFC) > 1) 
+  DEGs[[i]] <- top
+  DEGList[[i]] <- rownames(DEGs[[i]])
+  # GO[[i]]<-enrichGO(gene = DEGList[[i]],OrgDb = "org.Hs.eg.db", universe = rownames(counts_filt),keyType = "SYMBOL",ont = "BP",qvalueCutoff = 0.2,)
+  colstouse <- which(clusters$Clusters %in% paste0("cl_",strsplit(i,split = "v")[[1]][1]))
+  colstouse <- c(colstouse,which(clusters$Clusters %in% paste0("cl_",strsplit(i,split = "v")[[1]][2])))
+if(length(DEGList[[i]]) > 0 && length(colstouse) > 0){
+    pheatmap(counts_norm[DEGList[[i]], colstouse],
+             scale = "row",
+             fontsize_row = 3, 
+             fontsize_col = 10,
+             angle_col = 45,
+             color = viridis(100),
+             breaks = seq(-1.2, 2.5, length.out = 100),
+             main = paste0("DEGs of ", i),
+             annotation_col = clusters,
+             cluster_cols = F)
+  
+  data <- counts_norm[DEGList[[i]], colstouse]
+  colnames(data)<-paste0(colnames(data),clusters[colnames(data),])
+  
+    # write.xlsx(data,file=paste0("/home/marco/Scrivania/MicrobiomaXPaper-20240903T092735Z-001/MicrobiomaXPaper/DGE/",i,".xlsx"), row.names = T)
+  
+  }
+  else {
+    message(paste("No DEGs or columns available for contrast:", i))
+  }
+}
+
+df <-  as.data.frame(lapply(DEGList, "length<-", max(lengths(DEGList))))
+
+write.xlsx(df,"../results/DEG_clusters.xlsx")
+
+
+```
+
+
+
+```{r}
+gene_variances <- rowVars(counts_norm)
+liviadb <- read.xlsx("../local/data/zscore_reactome_all.xlsx")
+liviadb<-data.frame(t(liviadb))%>% janitor::row_to_names(1)
+colnames(liviadb)<-gsub(" ",".",colnames(liviadb))
+rownames(liviadb)<-gsub("H_","",rownames(liviadb))
+liviadb <- liviadb %>%  mutate(across(everything(), ~ as.numeric(as.character(.))))
+liviadb <- merge(liviadb,clusters,by=0) %>% tibble::column_to_rownames("Row.names")
+
+n_top_genes <- 1000  # Adjust as needed
+top_variable_genes <- names(sort(gene_variances, decreasing = TRUE)[1:n_top_genes])
+dataTopVariable <- counts_norm[which(rownames(counts_norm)%in% top_variable_genes),]
+#Performing a PCA on these data
+data_PCA = prcomp(t(dataTopVariable), scale = T)
+scores = data.frame(sample = rownames(data_PCA$x), PC1 = data_PCA$x[,1], PC2 = data_PCA$x[,2], PC3 = data_PCA$x[,3])
+scores$sample = rownames(scores)
+scores = merge(scores, liviadb,by =0) %>% tibble::column_to_rownames("Row.names")
+
+## **PCA Plot on PC1 vs PC2**
+  pca_plot <- ggplot(scores, aes(x = PC1, y = PC2, color = Clusters)) +
+  geom_point(size = 5, alpha = 0.8) +  theme_minimal(base_size = 14) +
+  scale_color_manual(values = c("cl_1" = "#468B74" , "cl_2" ="#F58B1F", "cl_3" = "#92C73E","cl_4" =  "#EC1E24"))+
+  # labs(
+  #   x = paste0("PC1 (", round(var_explained[1] * 100, 2), "% Variance)"),
+  #   y = paste0("PC2 (", round(var_explained[2] * 100, 2), "% Variance)")
+  # ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(face = "bold", size = 14),
+    legend.title = element_text(size = 12, face = "bold"),
+    legend.text = element_text(size = 10),
+    panel.grid.minor = element_blank()
+  )+
+  ggtitle("Clusters") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14))
+
+  
+## **PCA Plot on PC1 vs PC2**
+  pca_plot2 <- ggplot(scores, aes(x = PC1, y = PC2, color = Keratinization)) +
+  geom_point(size = 5, alpha = 0.8) +
+  theme_minimal(base_size = 14) +
+  scale_color_gradient(low = "grey90", high = "#D94943") +  # Intensity of color
+  # labs(
+  #   x = paste0("PC1 (", round(var_explained[1] * 100, 2), "% Variance)"),
+  #   y = paste0("PC2 (", round(var_explained[2] * 100, 2), "% Variance)")
+  # ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(face = "bold", size = 14),
+    legend.title = element_text(size = 12, face = "bold"),
+    legend.text = element_text(size = 10),
+    panel.grid.minor = element_blank()
+  ) +
+  ggtitle("Pathway") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14))
+
+
+combined_plots <- pca_plot + pca_plot2 + 
+  plot_layout(guides = "collect") +  # Merge legends
+  plot_annotation(title = "PCA Analysis")  # Add panel labels (A, B)
+
+print(combined_plots)
+```
+
+```{r}
+library(ggpubr)
+my_comparisons <- list( c("cl_1","cl_2"),c("cl_1","cl_3"),c("cl_1","cl_4"),c("cl_3","cl_2"),c("cl_4","cl_2"),c("cl_3","cl_4"))
+ggplot(scores, aes(x = Clusters, y = `Formation.of.the.Cornified.Envelope` , fill = Clusters)) +
+  geom_boxplot()+
+  geom_point(alpha=0.3)+
+  theme_minimal() +
+  scale_fill_manual(values = c("cl_1" = "#468B74" , "cl_2" ="#F58B1F", "cl_3" = "#92C73E","cl_4" =  "#EC1E24"))+
+  stat_compare_means(comparison=my_comparisons)+
+  labs(title = "Keratinization by Clusters",
+       x = "Clusters",
+       y = "Keratinization Score") +
+  theme(legend.position = "none")
+
+```
+
+```{r}
+
+plotCount = function(data, n){
+
+ # data$Description = factor(x = data$Description, levels = rev(data$Description))
+  data = data[which(data$p.adjust < 0.05), ]
+
+  if(nrow(data) < n){
+    p = ggplot(data = data[1:nrow(data), ], mapping = aes(x = Description, y = -log10(p.adjust), col = -log10(p.adjust))) +
+      geom_point(stat = "identity", aes(size = Count)) + coord_flip() + theme_bw() +
+      scale_color_gradientn(colors = c("gold", "blueviolet", "darkorchid4"),
+                            name = "-log10(Adj.P-value)") +
+      geom_hline(yintercept = -log10(0.05),
+                 color = "grey20",
+                 linetype = "dashed") + xlab(" ")
+  } else {
+    p = ggplot(data = data[1:n, ], mapping = aes(x = Description, y = -log10(p.adjust), col = -log10(p.adjust))) +
+      geom_point(stat = "identity", aes(size = Count)) + coord_flip() + theme_bw() +
+      scale_color_gradientn(colors = c("gold", "blueviolet", "darkorchid4"),
+                            name = "-log10(Adj.P-value)") +
+      geom_hline(yintercept = -log10(0.05),
+                 color = "grey20",
+                 linetype = "dashed") + xlab(" ")
+  }
+
+  return(p)
+}
+
+
+for (i in names(DEGList)) {
+  if(length(DEGList[[i]]) > 0){
+
+  gene_symbols <- DEGList[[i]]
+  universe_symbols <- rownames(counts_norm)
+# Convert SYMBOL to ENTREZID
+  converted_genes <- bitr(gene_symbols,
+                        fromType = "SYMBOL",
+                        toType = "ENTREZID",
+                        OrgDb = org.Hs.eg.db)
+
+  universe_entrez <- bitr(universe_symbols,
+                        fromType = "SYMBOL",
+                        toType = "ENTREZID",
+                        OrgDb = org.Hs.eg.db)
+
+  mygenes <- converted_genes$ENTREZID
+  myuniverse <- universe_entrez$ENTREZID
+
+  result <- enrichPathway(
+  mygenes,
+  organism = "human",
+  pvalueCutoff = 0.05,
+  pAdjustMethod = "BH",
+  qvalueCutoff = 0.2,
+  universe = myuniverse,
+  readable = FALSE
+  )
+
+    result_df <- as.data.frame(result@result) %>% filter(pvalue<0.05) 
+    result_df$Description <- gsub(" ",".",result_df$Description)
+    plot <- plotCount(result_df, 10)
+
+    # Print the plot to the R console or RStudio Viewer
+    print(plot)
+
+    # Optionally save the plot to a file
+    ggsave(filename = paste0("../results/images/",i, "_enriched_pathways_plot.png"), plot = plot, width = 8, height = 6)
+    }
+}
+
+
+```
+
+```{r}
+lowerqrt <- quantile(clusters$dysbio, probs = 0.20)  # Primo quartile
+upperqrt <- quantile(clusters$dysbio, probs = 0.80)  # Terzo quartile
+
+for (i in 1:length(clusters$dysbio)) {
+  if(clusters$dysbio[i]<=lowerqrt){
+    
+    clusters$group[i] <- "lower"
+  }else{
+    if (clusters$dysbio[i]>=upperqrt) {
+      clusters$group[i] <- "higher"
+    }else{
+      clusters$group[i] <- "medium"
+    }
+  }
+}
+
+clusters_new <- clusters %>% filter(group != "medium")
+conte <- select(counts_filt,rownames(clusters_new))
+dge <- DGEList(counts = conte , group = clusters_new$group)
+
+design <- model.matrix(~0 + clusters_new$group) 
+colnames(design) <- gsub("clusters\\$","",colnames(design))
+dge <- estimateDisp(dge)
+dge <- estimateTagwiseDisp(dge)
+fit <- glmQLFit(dge, design)
+
+contrasts <- makeContrasts("lower-higher"=lower-higher,levels=c("lower","higher"))
+
+DEGList <- list()
+DEGs <- list()
+counts_norm <- cpm(dge, normalized.lib.sizes=TRUE, log=TRUE)
+GO <- list()
+
+for(i in colnames(contrasts)){
+  qlf <- glmQLFTest(fit, contrast = contrasts[,i])
+  top <- topTags(qlf,n = Inf) 
+  top <- dplyr::filter(top$table, FDR < 0.05 & abs(logFC) > 1) 
+  DEGs[[i]] <- top
+  DEGList[[i]] <- rownames(DEGs[[i]])
+  # GO[[i]]<-enrichGO(gene = DEGList[[i]],OrgDb = "org.Hs.eg.db", universe = rownames(counts_filt),keyType = "SYMBOL",ont = "BP",qvalueCutoff = 0.2,)
+  colstouse <- which(clusters_new$group %in% strsplit(i,split = "-")[[1]][1])
+  colstouse <- c(colstouse,which(clusters_new$group %in% strsplit(i,split = "-")[[1]][2]))
+if(length(DEGList[[i]]) > 0 && length(colstouse) > 0){
+    pheatmap(counts_norm[DEGList[[i]], colstouse],
+             scale = "row",
+             fontsize_row = 3, 
+             fontsize_col = 10,
+             angle_col = 45,
+             cutree_rows = 2,
+             cutree_cols = 2,
+             color = viridis(100),
+             breaks = seq(-1.2, 2.5, length.out = 100),
+             main = paste0("DEGs of ", i),
+             annotation_col = clusters_new[,which(colnames(clusters_new)!="dysbio")],
+             cluster_cols = F)
+  
+  data <- counts_norm[DEGList[[i]], colstouse]
+  colnames(data)<-paste0(colnames(data),clusters_new[colnames(data),])
+  
+    # write.xlsx(data,file=paste0("/home/marco/Scrivania/MicrobiomaXPaper-20240903T092735Z-001/MicrobiomaXPaper/DGE/",i,".xlsx"), row.names = T)
+  
+  }
+  else {
+    message(paste("No DEGs or columns available for contrast:", i))
+  }
+}
+
+df <-  as.data.frame(lapply(DEGList, "length<-", max(lengths(DEGList))))
+write.xlsx(counts_filt[which(rownames(counts_norm) %in% df$lower.higher),which(colnames(counts_norm) %in% rownames(clusters_new))],"../results/DEG_dysbio.xlsx",sep="\t",rowNames=T)
+
+```
+```{r}
+
+plotCount = function(data, n){
+
+ # data$Description = factor(x = data$Description, levels = rev(data$Description))
+  data = data[which(data$p.adjust < 0.05), ]
+
+  if(nrow(data) < n){
+    p = ggplot(data = data[1:nrow(data), ], mapping = aes(x = Description, y = -log10(p.adjust), col = -log10(p.adjust))) +
+      geom_point(stat = "identity", aes(size = Count)) + coord_flip() + theme_bw() +
+      scale_color_gradientn(colors = c("gold", "blueviolet", "darkorchid4"),
+                            name = "-log10(Adj.P-value)") +
+      geom_hline(yintercept = -log10(0.05),
+                 color = "grey20",
+                 linetype = "dashed") + xlab(" ")
+  } else {
+    p = ggplot(data = data[1:n, ], mapping = aes(x = Description, y = -log10(p.adjust), col = -log10(p.adjust))) +
+      geom_point(stat = "identity", aes(size = Count)) + coord_flip() + theme_bw() +
+      scale_color_gradientn(colors = c("gold", "blueviolet", "darkorchid4"),
+                            name = "-log10(Adj.P-value)") +
+      geom_hline(yintercept = -log10(0.05),
+                 color = "grey20",
+                 linetype = "dashed") + xlab(" ")
+  }
+
+  return(p)
+}
+
+
+for (i in names(DEGList)) {
+  if(length(DEGList[[i]]) > 0){
+
+  gene_symbols <- DEGList[[i]]
+  universe_symbols <- rownames(counts_norm)
+# Convert SYMBOL to ENTREZID
+  converted_genes <- bitr(gene_symbols,
+                        fromType = "SYMBOL",
+                        toType = "ENTREZID",
+                        OrgDb = org.Hs.eg.db)
+
+  universe_entrez <- bitr(universe_symbols,
+                        fromType = "SYMBOL",
+                        toType = "ENTREZID",
+                        OrgDb = org.Hs.eg.db)
+
+  mygenes <- converted_genes$ENTREZID
+  myuniverse <- universe_entrez$ENTREZID
+
+  result <- enrichPathway(
+  mygenes,
+  organism = "human",
+  pvalueCutoff = 0.05,
+  pAdjustMethod = "BH",
+  qvalueCutoff = 0.2,
+  universe = myuniverse,
+  readable = FALSE
+  )
+
+    result_df <- as.data.frame(result@result) %>% filter(pvalue<0.05) 
+    result_df$Description <- gsub(" ",".",result_df$Description)
+    plot <- plotCount(result_df, 10)
+
+    # Print the plot to the R console or RStudio Viewer
+    print(plot)
+
+    # Optionally save the plot to a file
+    ggsave(filename = paste0("../results/images/",i, "_enriched_pathways_plot.png"), plot = plot, width = 8, height = 6)
+    }
+}
+
+
+```
