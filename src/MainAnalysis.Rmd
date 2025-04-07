@@ -58,7 +58,7 @@ head(kdata[,1:round(ncol(kdata)/4,0)])
 
 #Dataframe metadata
 meta=read.xlsx("../local/data/Vulvodinia_Samples.xlsx") #Metadata sequencing information
-
+kdataf <- sweep(kdata,2,colSums(kdata),"/")
 #Add H/D information in colnames
 # colnames(kdata)=paste(meta[match(colnames(kdata),meta$PatientID),]$SampleType, colnames(kdata), sep="_")
 ```
@@ -164,6 +164,7 @@ kdataH<-kdata[,grepl("H_",colnames(kdata))]
 #Normalization of dataset based on totnumber of reads (number_of_read/tot_reads_in_sample)
 total_reads<-colSums(kdataH)
 kdataH_frac<-sweep(kdataH, 2, total_reads, "/")
+write.table(kdataH_frac, file = "../results/brackenabundances_normtss.txt", sep = "\t")
 prc=0.001
 idx= which(rowSums(kdataH_frac >= prc) >= round(ncol(kdataH_frac)/10,0))
 kdataH_frac= as.data.frame(kdataH_frac[idx,])
@@ -174,6 +175,7 @@ kdata_filt<-kdataH[filtered_micro,]
 # 1. Total Sum Scaling (TSS) ----
 #------------------------------#
 kdata_frac<-sweep(kdata_filt,2,colSums(kdata_filt),"/")
+
 ```
 
 
@@ -526,28 +528,59 @@ scores = merge(scores,final_annotationcol,by = 0)
 
 ---
 
-### **PCA Plot on PC1 vs PC2**
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 
-```{r echo=FALSE, warning=FALSE, message=FALSE}
-var_explained <- (data_PCA$sdev^2) / sum(data_PCA$sdev^2)
-p=ggplot(scores, aes(x=PC1, y=PC2,color= Dominance, label= PatientID)) +
- # ggtitle("PCA su filtro per 100reads in 50% dei campioni (x condizione)")+
-  geom_point(size = 3) +
-  scale_color_manual(values = cluster_colors$Dominance) +
-  geom_text_repel(max.overlaps = 10, size= 3, box.padding = 0.3, point.padding = 3) +
-   # Minimal theme for a clean design
-  labs(
-    title = "PCA Plot of Samples",
-    x = paste0("PC1 (", round(var_explained[1] * 100, 2), "% Variance)"),
-    y = paste0("PC2 (", round(var_explained[2] * 100, 2), "% Variance)"),
-    color = "Status",
-    shape = "Patient ID"
+NMDS <- vegan::metaMDS(
+  t(kdata_frac), 
+  distance = "bray", 
+  trymax = 100,
+  autotransform = TRUE,  # Auto-transformation enabled (Wisconsin double standardization)
+  k = 4                  # Number of dimensions
+)
+
+
+# Extract and prepare scores
+stress_value <- paste("Stress:", round(NMDS$stress, 3))  # Capture stress value
+score <- data.frame(
+  vegan::scores(NMDS)$site,
+  sampleID = rownames(vegan::scores(NMDS)$site)
+) %>%
+  mutate(
+    SampleGroup = sapply(strsplit(sampleID, "\\."), "[", 1)  # Extract sample groups
+  )
+score <- merge(score,final_annotationcol,by = 0)
+p <- ggplot(score, aes(x = NMDS1, y = NMDS2)) +
+  geom_point(
+    aes(fill = Dominance),  # Moved 'fill' mapping here
+    size = 6,
+    alpha = 0.9,
+    color = "grey40",      # Border color
+    shape = 21,             # Filled circle
+    stroke = 0.7            # Border thickness
   ) +
-  theme_test()
-pmarginal <- ggMarginal(p, type = "density", groupColour = TRUE, groupFill = TRUE)
-  
+  scale_fill_manual(values = cluster_colors$Dominance,
+                    name = "Community State Type", 
+                    labels = c("CSTI", "CSTII", "CSTIII","CSTIV") 
+                    ) +
+  labs(
+    title = "Non-Metric Multidimensional Scaling (NMDS)",
+    subtitle = stress_value,
+    x = "NMDS1",
+    y = "NMDS2"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
+    plot.subtitle = element_text(hjust = 0.5, color = "gray40"),
+    axis.title = element_text(face = "bold", color = "gray30"),
+    panel.grid.major = element_line(color = "grey90"),
+    panel.grid.minor = element_blank(),
+    plot.background = element_rect(fill = "white", color = NA)
+  ) +
+  coord_fixed()  # Maintain aspect ratio
+ ggsave(filename = paste0("../results/images/NMDSCluster.svg"), plot = p, width = 8, height = 6, device = svglite)
 
- ggsave(filename = paste0("../results/images/PCAClusters.svg"), plot = p, width = 8, height = 6, device = svglite)
+
 ```
 
 ```{r alphadiversity}
