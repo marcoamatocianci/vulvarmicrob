@@ -5,12 +5,9 @@ import warnings
 #import h5py
 import os
 from typing import Union
-from compositional_methods import run_clr, clr_normalization
 # Import functions from  SPARCC code
 from core_methods import to_fractions, compute_correlation_pvalues
 from compositional_methods import variation_mat
-
-
 def basis_var(Var_mat, M, V_min=1e-4):
     """Estimate the basis variances of compositional data."""
     V_vec = Var_mat.sum(axis=1)
@@ -37,7 +34,6 @@ def new_excluded_pair(C, previously_excluded=[], th=0.1):
     else:
         return None
 
-# SPARCC-specific functions 
 def run_sparcc(frame, th=0.1, x_iter=10):
     Var_mat = variation_mat(frame)
     Var_mat_temp = Var_mat.copy()
@@ -102,44 +98,6 @@ def basic_corr(frame, method='sparcc', th=0.1, x_iter=10):
     else:
         raise ValueError(f"Unsupported method: {method}")
 
-def permute_w_replacement_old(frame: Union[pd.DataFrame, np.ndarray], axis=0):
-    '''
-    Permute the frame values across the given axis.
-    Create simulated dataset where the counts of each component (column)
-    in each sample (row) are randomly sampled from all the
-    counts of that component in all samples.
-
-    Parameters
-    ----------
-    frame : DataFrame or Numpy Array
-        Frame to permute. Must be a regular NumPy array (not ragged).
-    axis : {0, 1}
-        - 0 - Permute row values across columns
-        - 1 - Permute column values across rows
-
-    Returns
-    -------
-    Permuted DataFrame (new instance).
-    '''
-
-    if isinstance(frame, pd.DataFrame):
-        frame = frame.values  # Convert DataFrame to NumPy array
-
-    # Define permutation function
-    fp = lambda x: np.random.permutation(x)
-
-    # Permutation along the specified axis
-    if axis == 0:
-        # Permute along the columns (permute each column independently)
-        aux = np.apply_along_axis(fp, 0, frame)  # Apply permutation along axis 0
-        return aux
-    elif axis == 1:
-        # Permute along the rows (permute each row independently)
-        aux = np.apply_along_axis(fp, 1, frame)  # Apply permutation along axis 1
-        return aux
-    else:
-        raise ValueError("Axis must be 0 (columns) or 1 (rows).")
-
 def permute_w_replacement(frame: Union[pd.DataFrame, np.ndarray], axis=0):
     '''
     Generates a bootstrap sample by resampling rows or columns without replacement.
@@ -162,37 +120,7 @@ def permute_w_replacement(frame: Union[pd.DataFrame, np.ndarray], axis=0):
     else:
         raise ValueError("Axis must be 0 (rows) or 1 (columns).")
 
-def bootstrap_with_replacement(frame: Union[pd.DataFrame, np.ndarray], axis: int = 0):
-    '''
-    Generates a bootstrap sample by resampling rows or columns with replacement.
 
-    Parameters
-    ----------
-    frame : DataFrame or Numpy Array
-        Frame to resample.
-    axis : {0, 1}
-        0 : Resample rows with replacement.
-        1 : Resample columns with replacement.
-
-    Returns
-    -------
-    Bootstrap sample as a NumPy array.
-    '''
-    if isinstance(frame, pd.DataFrame):
-        frame = frame.values
-
-    if axis == 0:  # Resample rows
-        n_rows = frame.shape[0]
-        bootstrap_indices = np.random.choice(n_rows, size=n_rows, replace=True)
-        bootstrap_sample = frame[bootstrap_indices]
-        return bootstrap_sample
-    elif axis == 1:  # Resample columns
-        n_cols = frame.shape[1]
-        bootstrap_indices = np.random.choice(n_cols, size=n_cols, replace=True)
-        bootstrap_sample = frame[:, bootstrap_indices]
-        return bootstrap_sample
-    else:
-        raise ValueError("Axis must be 0 (rows) or 1 (columns).")
 ### Function to Compute Pseudo P-values for Correlation and Covariance
 def compute_pseudo_pvals(frame, original_cor, original_cov, n_bootstrap=1000, method='sparcc', th=0.1, x_iter=10, test_type='two-sided'):
     """Compute pseudo p-values for correlation and covariance matrices using bootstrapping."""
