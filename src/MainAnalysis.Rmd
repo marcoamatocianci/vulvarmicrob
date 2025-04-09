@@ -57,7 +57,7 @@ rownames(kdata)<-gsub("'","_",rownames(kdata))
 head(kdata[,1:round(ncol(kdata)/4,0)])
 
 #Dataframe metadata
-meta=read.xlsx("../local/data/Vulvodinia_Samples.xlsx") #Metadata sequencing information
+meta=read.xlsx("../local/data/metadata.xlsx") #Metadata sequencing information
 kdataf <- sweep(kdata,2,colSums(kdata),"/")
 #Add H/D information in colnames
 # colnames(kdata)=paste(meta[match(colnames(kdata),meta$PatientID),]$SampleType, colnames(kdata), sep="_")

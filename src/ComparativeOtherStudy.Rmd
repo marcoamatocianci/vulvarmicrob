@@ -25,8 +25,7 @@ suppressMessages(library(dendextend))
 suppressMessages(library(tidyr))
 suppressMessages(library(sva))
 suppressMessages(library(rstudioapi))
-
-
+suppressMessages(library(eulerr))
 ```
 
 ```{r echo=FALSE, warning=FALSE}
@@ -63,7 +62,7 @@ kdata_filt= as.data.frame(kdata[idx,])
 
 kdataus=read.delim("../results/decontaminated_counts.txt",sep= "\t")
 kdataus=kdataus+1
-samp=read.xlsx("../local/data/Vulvodinia_Samples.xlsx")
+samp=read.xlsx("../local/data/metadata.xlsx")
 
 
 kdataH=kdataus[,grepl("H_",colnames(kdataus))]
