@@ -5,8 +5,10 @@ date: "2024-09-24"
 ---
 
 ```{r echo<-FALSE}
-suppressMessages(library(dendextend))
+
 suppressMessages(library(rstudioapi))
+suppressMessages(library(vegan))
+suppressMessages(library(dendextend))
 suppressMessages(library(openxlsx))
 suppressMessages(library(dplyr))
 suppressMessages(library(pheatmap))
@@ -20,7 +22,10 @@ suppressMessages(library(biclust))
 suppressMessages(library(vegan))
 suppressMessages(library(tidyr))
 suppressMessages(library(viridis))
+suppressMessages(library(ape))
+suppressMessages(library(plotly))
 ```
+
 ```{r echo=FALSE, warning=FALSE}
 script_dir <- dirname(getActiveDocumentContext()$path)
 setwd(script_dir)
@@ -36,6 +41,9 @@ knitr::opts_knit$set(root.dir = script_dir)
 df_rna_frac <- read.delim("../results/brackenabundances_normtss.txt", sep="\t")
 df_rna_frac <- df_rna_frac[,!grepl("TT81",colnames(df_rna_frac))] 
 df_rna_frac <- df_rna_frac[,!grepl("TT60",colnames(df_rna_frac))]
+##ONLY HEALTY###
+kdataH = df_rna_frac[, grepl("H_", colnames(df_rna_frac))]
+df_rna_frac<-kdataH
 #Dataframe metadata
 meta <- read.xlsx("../local/data/Vulvodinia_Samples.xlsx")
 ```
@@ -54,8 +62,6 @@ df_dna <- df_dna[,-c(1:3)]
 colnames(df_dna) <- paste(meta[match(colnames(df_dna),meta$PatientID),]$SampleType, colnames(df_dna), sep="_")
 
 df_dna_frac<-sweep(df_dna,2,colSums(df_dna),"/")
-knitr::kable(head(df_dna_frac[,1:10],n = 10))
-
 ```
 
 
@@ -103,7 +109,6 @@ lactodna$Species <- rownames(lactodna)
 tlactodna<-as.data.frame(t(lactodna))
 
 common_columns <- intersect(colnames(lactodna), colnames(lactorna))
-lactorna[,common_columns]
 
 d=merge(lactodna,lactorna,by = 0, suffixes = c(".dna", ".rna"))
 rownames(d)=d$Row.names
@@ -154,9 +159,7 @@ pheatmap(betamtx,
          # color = viridis,
          clustering_distance_rows = beta_rna,
          clustering_distance_cols = beta_rna)
-# beta_rna <- vegdist(t(b[,grep("dna",colnames(b))]), method = "bray")
-# beta_dna <- vegdist(t(b[,grep(".rna",colnames(b))]), method = "bray")
-# adonis2(beta_rna ~ c(rep("rna",3),rep("dna",3)), method = "bray", permutations = 1000)
+
 
 hc <- hclust(beta_rna)
 clusters <- cutree(hc, k = 6)
@@ -167,55 +170,9 @@ plot(dend, ylab = "Height")
 
 
 
-
-
-  NMDS <- metaMDS(t(b), distance = "bray", trymax = 100, autotransform = T, k = 4)
-score <- as.data.frame(scores(NMDS)$site)
-score$sampleID <- rownames(score)
-score$trt <- factor(c(rep("rna",nrow(score)/2),rep("dna",nrow(score)/2)),levels=c("rna","dna"))
-
-micro <- as.data.frame(scores(NMDS)$species)
-micro$taxa <- b$taxonomy
-micro$abund <- colSums(t(b))
-
-
-score$Samples=sapply(strsplit(score$sampleID,"\\."),"[",1)
-
-
-ggplot() +
-  geom_point(data = score, aes(x = NMDS1, y = NMDS2, shape = trt, fill = trt), 
-             size = 7, stroke = 0.5, color = "black", alpha = 0.9) +  # Black outline and transparency
-  scale_fill_manual(values = c("#66c2a5", "#fc8d62")) +  # Softer color palette for the fill
-  scale_shape_manual(values = c(21, 24)) +  # Hollow circle and triangle for better outline control
-  labs(title = "NMDS Plot of Treatment Groups",
-       x = "NMDS1", 
-       y = "NMDS2",
-       fill = "Treatment", 
-       shape = "Treatment") + 
-  geom_text_repel(data=score,aes(x=NMDS1,y=NMDS2,label = Samples)) +#+ Add labels
-  theme_minimal(base_size = 14) +  # Clean theme
-  theme(legend.position = "right", 
-        panel.grid = element_blank(), 
-        plot.title = element_text(hjust = 0.5))  # Center the title
-
-
-
-
-
 ```
 
 ```{r}
-
-# Load necessary libraries
-library(vegan)     # For distance calculations
-library(ape)       # For PCoA
-library(plotly)    # For 3D plotting
-
-# Example data: Assuming 'b' is your data, where rows are samples and columns are features
-# Transpose the data for PCoA (samples should be rows)
-b<-b[,-grep("H_TT23",colnames(b))]
-b<-b[,-grep("H_TT28",colnames(b))]
-b<-b[,-grep("H_TT55",colnames(b))]
 b_transposed <- t(b)
 
 
@@ -232,7 +189,7 @@ score$trt <- factor(c(rep("rna",nrow(score)/2),rep("dna",nrow(score)/2)),levels=
 
 ggplot() +
   geom_point(data = score, aes(x = Axis.1, y = Axis.2, shape = trt, fill = trt), 
-             size = 15, stroke = 0.5, color = "black", alpha = 0.9) +  # Black outline and transparency
+             size = 5, stroke = 0.5, color = "black", alpha = 0.9) +  # Black outline and transparency
   scale_fill_manual(values = c("#66c2a5", "#fc8d62")) +  # Softer color palette for the fill
   scale_shape_manual(values = c(21, 24)) +  # Hollow circle and triangle for better outline control
   labs(title = "PCoA Plot of Treatment Groups",
@@ -244,8 +201,7 @@ ggplot() +
   theme_minimal(base_size = 14)+  # Clean theme
 theme(legend.position = "right",
       panel.grid = element_blank(),
-      plot.title = element_text(hjust = 0.5)) +
-  coord_cartesian(xlim = c(-0.3, 0.25), ylim = c(-0.25, 0.2)) # Set axis limits
+      plot.title = element_text(hjust = 0.5)) 
 
 ```
 
@@ -259,7 +215,6 @@ common_columns <- intersect(colnames(df_dna), colnames(df_counts))
 merged=merge(df_dna[,common_columns],df_counts[,common_columns],by = 0, suffixes = c(".dna", ".rna"))
 rownames(merged)=merged$Row.names
 merged$Row.names=NULL
-colSums(merged)
 prc<-0.1
 bac<-merged[-grep("Lactobacillus crispatus|Lactobacillus iners|Lactobacillus jensenii",rownames(merged)),]
 merged_filt<-bac
@@ -297,69 +252,6 @@ merged$Row.names=NULL
 colSums(merged)
 prc<-0.1
 bac<-rowSums(apply(merged,2,FUN = function(x) x>=prc))>=1
-```
-
-```{r}
-merged_all = merge(df_dna_frac[,common_columns], df_rna_frac[,common_columns], by = 0, suffixes = c(".dna", ".rna"), all = TRUE)
-merged_all[is.na(merged_all)] <- 0
-merged_all<-tibble::column_to_rownames(merged_all,"Row.names")
-genus_frac<-merged_all
-genus_frac$genus<-sapply(strsplit(rownames(genus_frac)," "),"[",1) 
-genus_frac<-genus_frac %>%
-  group_by(genus) %>%
-  summarise(across(everything(), sum, na.rm = TRUE)
-  )%>% tibble::column_to_rownames("genus")
-
-genus_frac$sum <- rowSums(genus_frac)
-
-genus_frac<-arrange(genus_frac,desc(sum))
-genus_frac$sum<-NULL
-genus_frac<-sweep(genus_frac,2,colSums(genus_frac),"/")
-
-colSums(genus_frac)
-# Calcola la varianza per ogni riga
-row_var <- apply(genus_frac, 1, var)
-
-# Mantieni solo le righe con varianza diversa da 0
-genus_frac <- genus_frac[row_var != 0, ]
-prc=0.05
-#--- Show only the ones over 20%
-bac<-rowSums(apply(genus_frac,2,FUN = function(x) x>= prc))>=1
-genus_frac_filt<-genus_frac[bac,]
-genus_frac_filt<-binarize(genus_frac_filt,threshold =0)
-
-pheatmap(genus_frac_filt)
-pheatmap(genus_frac,scale = "row",
-          breaks= seq(-1.5,1.5,length.out=100))
-
-```
-```{r}
-
-genus_frac<-merged_all
-genus_frac$genus<-sapply(strsplit(rownames(genus_frac)," "),"[",1) 
-genus_frac<-genus_frac %>%
-  group_by(genus) %>%
-  summarise(across(everything(), sum, na.rm = TRUE)
-  )%>% tibble::column_to_rownames("genus")
-
-genus_frac$sum <- rowSums(genus_frac)
-
-genus_frac<-arrange(genus_frac,desc(sum))
-genus_frac$sum<-NULL
-genus_frac<-sweep(genus_frac,2,colSums(genus_frac),"/")
-# Define the thresholds for 10% and 1% abundance
-prc_10 <- 0.1
-prc_01 <- 0.05
-# Calculate rows meeting the 10% abundance condition
-bac_10 <- rowSums(apply(genus_frac, 2, FUN = function(x) x >= prc_10)) >= 1
-genus_frac <- genus_frac[!bac_10,]
-# Calculate rows meeting the 1% abundance condition
-bac_01 <- rowSums(apply(genus_frac, 2, FUN = function(x) x >= prc_01)) >= 1
-genus_frac <- genus_frac[bac_01,]
-# Select rows that meet either the 10% or 1% abundance condition
-row_var <- apply(genus_frac, 1, var)
-genus_frac <- genus_frac[row_var != 0, ]
-pheatmap(genus_frac,scale = "row",   breaks= seq(-1.5,1.5,length.out=100))
 ```
 
 ```{r}
@@ -480,13 +372,68 @@ cat("Information Gain:", mean(z$IG), "\n")
 ```
 
 ```{r}
-df <- data.frame()
+# Initialize an empty data frame to store results
+df <- data.frame(Microbe = character(), LogFoldChange = numeric(), RNAExpression = numeric())
+merged_all = merge(df_dna_frac[,common_columns], df_rna_frac[,common_columns], by = 0, suffixes = c(".dna", ".rna"), all = TRUE)
+merged_all[is.na(merged_all)] <- 0
+merged_all<-tibble::column_to_rownames(merged_all,"Row.names")
+# Loop through each microorganism
+merged_all <- merged_all[rowSums(merged_all)!=0,]
+for (microbe in rownames(merged_all)) {
+  # Extract RNA and DNA columns for all samples
+  rna_samples <- merged_all[microbe, grep(".rna", colnames(merged_all))] + 0.0000000000001
+  dna_samples <- merged_all[microbe, grep(".dna", colnames(merged_all))] + 0.0000000000001
+  
+  # Calculate log fold change for each sample
+  log_fold_changes <- log(rna_samples / dna_samples)
+  
+  # Create a temporary dataframe for this microbe
+  temp_df <- data.frame(
+    Microbe = microbe,
+    Sample = colnames(rna_samples), # Sample names (assumes column names identify samples)
+    LogFoldChange = as.numeric(log_fold_changes),
+    RNAExpression = as.numeric(rna_samples)
+  )
+  
+  # Combine with the main dataframe
+  df <- rbind(df, temp_df)
+}
 
-  for (microbe in rownames(merged_all)) {
-  rna <- merged_all[microbe,grep(".rna",colnames(merged_all))]+0.00001
-  dna <- merged_all[microbe,grep(".dna",colnames(merged_all))]+0.00001
-  df <- rbind(df,log(rna/dna))
-  }
+# View the resulting dataframe
+head(df)
 
-df
+p <- list()
+for (sample in unique(df$Sample)) {
+  dfi <- df[grep(sample,df$Sample),] 
+  dfi <- dfi[order(-dfi$RNAExpression),]
+  dfi <- dfi[1:20,]
+  p[[sample]]<-ggplot(dfi, aes(x = LogFoldChange, y = RNAExpression, color = Sample)) +
+  geom_point(size = 3) +
+  labs(title = "Log Fold Change vs RNA Expression Across Samples",
+       x = "LogFC",
+       y = "RNA EXP") +
+  theme_minimal()
+}
+
+# df$Sample <- NULL
+# 
+# stats::smooth()
+# df <- df[order(df$LogFoldChange,decreasing = T),]
+# stats::smooth()
+# 
+# df<- df[order(-df$RNAExpression),]
+# df <- df[1:100,]
+# df <- filter(df,LogFoldChange!=0 & RNAExpression !=	0.0000000000001	)
+ggplot(df, aes(x = LogFoldChange, y = RNAExpression)) +
+  geom_point(aes(color = abs(LogFoldChange)), alpha = 0.7) +
+  scale_color_viridis_c() +
+  theme_minimal(base_size = 12) +
+  # coord_cartesian(ylim = c(0,0.2)) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    legend.position = "right"
+  )
+
+
+
 ```

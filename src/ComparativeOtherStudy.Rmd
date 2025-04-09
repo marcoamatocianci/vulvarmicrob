@@ -1,0 +1,303 @@
+---
+title: "PaperMicroUltimate"
+output: html_document
+date: "2024-10-04"
+---
+
+
+```{r echo=FALSE, warning=FALSE}
+suppressMessages(library(RColorBrewer))
+suppressMessages(library(ggExtra))
+suppressMessages(library(openxlsx))
+suppressMessages(library(dplyr))
+suppressMessages(library(pheatmap))
+suppressMessages(library(ggplot2))
+suppressMessages(library(ggrepel))
+suppressMessages(library(gridExtra))
+suppressMessages(library(patchwork))
+suppressMessages(library(reshape2))
+suppressMessages(library(colorRamp2))
+suppressMessages(library(viridis))
+suppressMessages(library(edgeR))
+suppressMessages(library(readr))
+suppressMessages(library(vegan))
+suppressMessages(library(dendextend))
+suppressMessages(library(tidyr))
+suppressMessages(library(sva))
+suppressMessages(library(rstudioapi))
+
+
+```
+
+```{r echo=FALSE, warning=FALSE}
+script_dir <- dirname(getActiveDocumentContext()$path)
+setwd(script_dir)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = script_dir)
+```
+In this section, we import and preprocess the key dataframes required for the analysis of the **vulvar microbiome**. The datasets include microbiome absolute abundances generated using Kraken, samples metadata, and gene expression counts, all of which are crucial for subsequent statistical and bioinformatic analysis.
+
+-   **Kraken Output**: The dataframe `kdata` represents the taxonomic abundances from the Kraken output. To eliminate potential human DNA contamination, reads associated with *Homo sapiens* have been filtered out. Additionally, a pseudo-count of 1 has been added to all entries to avoid zeroes during log transformation or other mathematical operations.
+
+-   **Metadata**: The `meta` dataframe includes relevant clinical and experimental information about the cohort, containing details for each sample in the study, such as patient/control status.
+
+
+
+```{r echo=FALSE}
+#Dataframe metadata
+meta=read.delim("../local/data/df_metadataPRJEB61325.txt")
+meta$site_adj=meta$SwabSite
+meta[grepl("labia majora",meta$site_adj,ignore.case = T),]$site_adj="labia majora"
+meta[grepl("labia minora",meta$site_adj,ignore.case = T),]$site_adj="labia minora"
+
+#Dataframe output Kraken
+kdata=read.delim("../local/data/bracken_merged_abbundances.num_PRJEB61325.txt", sep= "\t")
+kdata = kdata[!grepl("sapiens",rownames(kdata)),]
+rownames(kdata)=kdata$name
+kdata= kdata[,-c(1:3)]
+kdata=kdata+1
+kdata=kdata %>% dplyr::select(-matches("\\.1$"))
+idx = which(rowSums(kdata >= 50) >= ncol(kdata)/4)
+kdata_filt= as.data.frame(kdata[idx,])
+
+
+kdataus=read.delim("../results/decontaminated_counts.txt",sep= "\t")
+kdataus=kdataus+1
+samp=read.xlsx("../local/data/Vulvodinia_Samples.xlsx")
+
+
+kdataH=kdataus[,grepl("H_",colnames(kdataus))]
+
+idxH= which(rowSums(kdataH >= 50) >= ncol(kdataH)/4)
+kdataus_filt= as.data.frame(kdataH[idxH,])
+
+
+final <- merge(kdataus,kdata,by=0)
+final=final[,!grepl("D_",colnames(final))]
+final <- final[,!grepl("TT81",colnames(final))] 
+final <- final[,!grepl("TT60",colnames(final))]
+final <- final[,!grepl("H_BP3",colnames(final))]
+rownames(final)=final$Row.names
+final$Row.names=NULL
+```
+
+```{r}
+# ##NORM
+final_frac<-sweep(final,2,colSums(final),"/")
+rvfinal <- as.data.frame(t(final_frac))
+```
+
+```{r}
+
+set.seed(123)  # For reproducibility
+
+NMDS <- metaMDS(rvfinal, distance = "bray", trymax = 100, autotransform = T, k = 4)
+
+# stress value around or above 0.2 is deemed suspect
+# stress values equal to or below 0.1 are considered fair
+# stress values equal to or below 0.05 indicate good fit
+
+score <- as.data.frame(scores(NMDS)$site)
+score$sampleID <- rownames(score)
+score <- merge(score, meta, by.x  = "sampleID",by.y = "run_accession" )
+score = filter(score,!(INSDC.status %in% c("NC1", "NC2", "NC3", "NC4","PC1","PC2","PC3","PC4")))
+colors <- brewer.pal(n = length(unique(score$SwabSite)), name = "Set1")
+Vulv_H<- score %>% filter(INSDC.status =="Healthy") %>% pull("sampleID")
+All_D <- score %>% filter(site == "vaginal" | site =="anal") %>% pull("sampleID")  
+VulvaUS<- score %>% filter(site =="vulvar_us") %>% pull("sampleID")
+Anal <- score %>% filter(site =="anal") %>% pull("sampleID")  
+Vaginal <- score %>% filter(site == "vaginal" ) %>% pull("sampleID")  
+idx<- which(score$sampleID %in% unique(c(Vulv_H,All_D)))
+
+color1 <- brewer.pal(n = length(unique(score[idx,]$site_adj)), name = "Set1")
+score1=as.data.frame(score[idx,])
+
+ggplot() +
+  geom_jitter(data = score1, aes(x = NMDS1, y = NMDS2,shape = batch, color = site), 
+             size = 3, stroke = 0.5, alpha = 0.9) +  # Transparency and stroke for outline control
+  scale_color_manual(values = colors) +  # Softer color palette for the fill
+  labs(title = "Plot Lichen Study",
+       x = "NMDS2", 
+       y = "NMDS3",
+       fill = "Site", 
+       shape = "Status") +  # Add axis and legend labels
+  theme_minimal(base_size = 14)  # Clean theme
+
+```
+
+```{r}
+
+
+mod<-model.matrix(~batch, meta[match(colnames(final_frac),meta$run_accession),])
+combdata<-as.data.frame(ComBat(dat=final_frac,batch = meta[match(colnames(final_frac),meta$run_accession),]$batch),mod=mod)
+
+
+NMDS <- metaMDS(t(combdata), distance = "bray", trymax = 100, autotransform = T, k = 4)
+
+# stress value around or above 0.2 is deemed suspect
+# stress values equal to or below 0.1 are considered fair
+# stress values equal to or below 0.05 indicate good fit
+
+# library(tidyverse)
+score <- as.data.frame(scores(NMDS))
+score$sampleID <- rownames(score)
+
+score <- merge(score, meta, by.x  = "sampleID",by.y = "run_accession" )
+score = filter(score,!(INSDC.status %in% c("NC1", "NC2", "NC3", "NC4","PC1","PC2","PC3","PC4")))
+
+
+
+
+Vulv_H<- score %>% filter(INSDC.status =="Healthy") %>% pull("sampleID")
+All_D <- score %>% filter(site == "vaginal" | site =="anal") %>% pull("sampleID")  
+VulvaUS<- score %>% filter(site =="vulvar_us") %>% pull("sampleID")
+Anal <- score %>% filter(site =="anal") %>% pull("sampleID")  
+Vaginal <- score %>% filter(site == "vaginal" ) %>% pull("sampleID")  
+idx<- which(score$sampleID %in% unique(c(Vulv_H,All_D)))
+
+color1 <- brewer.pal(n = length(unique(score[idx,]$site_adj)), name = "Set1")
+score1=as.data.frame(score[idx,])
+colors <- c("#B6DC76","#50808E","#D88373","#D66")
+ggplot()+
+  geom_jitter(data = score1, aes(x = NMDS1, y = NMDS2,shape = batch, color = site_adj), 
+             size = 5, stroke = 0.5, alpha = 0.9) +  # Transparency and stroke for outline control
+  scale_color_manual(values = color1) +  # Softer color palette for the fill
+  # scale_shape_manual(values = c(21, 24, 23, 22)) +  # Hollow shapes with fillable areas
+  labs(title = "Comparison with other shotgun-metagenome analysis",
+       x = "NMDS1", 
+       y = "NMDS2",
+       color = "Site", 
+       shape = "Studies") +  # Add axis and legend labels
+  theme_minimal(base_size = 14)  # Clean theme
+
+p=ggplot() +
+  geom_jitter(data = score1, aes(x = NMDS1, y = NMDS2, shape = batch, color = site), 
+              size = 7, alpha = 1) +
+  stat_ellipse(data = score1, aes(x = NMDS1, y = NMDS2, group = site, fill = site), 
+               type = "norm", level = 0.96, geom = "polygon", alpha = 0.2) +
+  scale_color_manual(values = colors) +
+  scale_fill_manual(values = colors) + 
+  scale_shape_manual(values = c(16,18))+
+  labs(title = "Comparison with other shotgun-metagenome analysis",
+       x = "NMDS1", 
+       y = "NMDS2",
+       color = "Site", 
+       shape = "Studies") +
+  theme_minimal(base_size = 14)
+ ggMarginal(p, type = "density", groupColour = TRUE, groupFill = TRUE)
+
+
+```
+
+```{r}
+select_top_100 <- function(df) {
+  df %>%
+    mutate(TotalAbundance = rowSums(df, na.rm = TRUE)) %>%  # Calcola la somma delle abbondanze per ogni riga
+    arrange(desc(TotalAbundance)) %>%  # Ordina in ordine decrescente
+    slice_head(n = 100) %>%  # Seleziona le prime 100 righe
+    dplyr::select(-TotalAbundance)  # Rimuovi la colonna di supporto
+}
+
+VaginalDB<-combdata[,Vaginal]
+AnalDB<-combdata[,Anal]
+VulvarDB<-combdata[,VulvaUS]
+
+# Applica la funzione ai tre dataset
+VaginalDB_top100 <- select_top_100(VaginalDB)
+AnalDB_top100 <- select_top_100(AnalDB)
+VulvarDB_top100 <- select_top_100(VulvarDB)
+
+VaginalDB_top100_means <- rowMeans(VaginalDB_top100)
+AnalDB_top100_means <- rowMeans(AnalDB_top100)
+VulvarDB_top100_means <- rowMeans(VulvarDB_top100)
+first <- merge(VulvarDB_top100_means,AnalDB_top100_means,by=0,all=T) %>% tibble::column_to_rownames("Row.names") %>% dplyr::rename(Vulvar=x,Anal=y)
+all <- merge(first,VaginalDB_top100_means,by=0,all=T)%>% tibble::column_to_rownames("Row.names") %>% dplyr::rename(Vaginal=y) 
+all[is.na(all)] <- 0
+write.table(all,"../results/mergeanvulvag.txt",sep="\t")
+
+venn_data <- list(
+  Vaginal = rownames(VaginalDB_top100),
+  Anal = rownames(AnalDB_top100),
+  Vulvar = rownames(VulvarDB_top100)
+)
+
+# Calcola il diagramma Euler proporzionale
+fit <- euler(venn_data)
+# Crea il plot con stile avanzato
+plot(fit,
+     quantities = list(type = "counts", font = 2, cex = 1.2, col = "gray30"),
+     fills = list(fill = c("#B6DC76","#50808E","#D66"), alpha = 0.7),
+     edges = list(col = "gray30", lex = 2),
+     main = "Overlap Top 100 Abundance",
+     legend = list(side = "right"))
+```
+
+```{r alphadiversity}
+nreads_min<-min(colSums(final))
+nreads_max<-max(colSums(final))
+fold<-round(nreads_max/nreads_min,0)
+
+kdata_subs<-rrarefy(t(final),nreads_min)
+alpha_subs<-diversity(kdata_subs)
+alphasubs=data.frame(samples=names(alpha_subs),value=alpha_subs)
+
+ggplot(alphasubs, aes(x = samples, y = factor(1), size = value, colour = value)) +
+  geom_point() +
+  scale_size_continuous(range = c(0, 8)) +
+  scale_color_gradient(low = "grey90", high = "#D94943") +  # Intensity of color
+  theme_bw() +
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(size = 5, angle = 45),  # Riduce la dimensione e inclina le etichette dell'asse y
+    axis.ticks.y = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "none"  # Hide the legend
+  )+
+  coord_fixed(ratio = 2)
+```
+
+```{r}
+association <- read.csv("../local/data/MicroPhenoDBAssociationScores.csv") %>% select(-Pmid, -Association_ID)
+key_cols <- setdiff(names(association), "Score")
+
+
+merged_dupl <- merge(final_frac, association, by.x = 0, by.y = "Microbe")
+
+# Compute the mean of 'Score' while grouping by 'Row.names'
+Scores <- merged_dupl %>%
+    group_by(Row.names) %>%
+    summarise(Score = mean(Score, na.rm = TRUE), .groups = "drop") %>%
+    tibble::column_to_rownames("Row.names")
+
+merged <- merge(final_frac,Scores,by=0)%>%tibble::column_to_rownames("Row.names")
+
+
+diseasescore<-list()
+for (names in setdiff(colnames(merged), c("Score","Genus"))) {
+
+diseasescore[names]<-sum(merged[,names]*merged[,"Score"])  
+  
+}
+
+disbiodb=data.frame(samples=names(unlist(diseasescore)),dysbio=unlist(diseasescore))
+disbiodb$samples=factor(disbiodb$samples)
+disbiodb$dysbio<-disbiodb$dysbio
+
+ggplot(disbiodb, aes(x = samples, y = factor(1), size = dysbio, colour = dysbio)) +
+  geom_point() +
+  scale_size_continuous(range = c(0, 5)) +
+  scale_color_gradient(low = "grey90", high = "#0070BB") +  # Intensità del colore
+  theme_bw() +
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y =  element_blank(),
+    axis.text.x = element_text(size = 5, angle = 45), 
+    axis.ticks.y = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "none"  # Nasconde la legenda
+  ) +
+  coord_fixed(ratio = 2)
+
+```
+

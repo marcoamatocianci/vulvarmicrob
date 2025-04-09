@@ -135,9 +135,12 @@ rnaextrcontfree <- rownames(filter(contamdf.freqrnaextr, contaminant == FALSE))
 #-----------------------------------------#
 # 4. Save Clean Data ----
 #-----------------------------------------#
+x<-sweep(kdata,2,colSums(kdata),"/")
+x<-x %>% filter(rownames(x) %in% rnaextrcontfree)
 kdata <- kdata %>% 
   filter(rownames(.) %in% rnaextrcontfree)
 
+write.table(x, file = "../results/brackenabundances_normtss.txt", sep = "\t")
 write.table(kdata, file = "../results/decontaminated_counts.txt", sep = "\t")
 ```
 ## **Filtering Dataframes Based on Read Counts**
@@ -164,7 +167,6 @@ kdataH<-kdata[,grepl("H_",colnames(kdata))]
 #Normalization of dataset based on totnumber of reads (number_of_read/tot_reads_in_sample)
 total_reads<-colSums(kdataH)
 kdataH_frac<-sweep(kdataH, 2, total_reads, "/")
-write.table(kdataH_frac, file = "../results/brackenabundances_normtss.txt", sep = "\t")
 prc=0.001
 idx= which(rowSums(kdataH_frac >= prc) >= round(ncol(kdataH_frac)/10,0))
 kdataH_frac= as.data.frame(kdataH_frac[idx,])
@@ -688,9 +690,15 @@ ggplot(data_long_gen,aes(x = Cluster,y=Value,fill = Cluster))+
   geom_boxplot()+
   geom_jitter(alpha=0.9)+
   facet_wrap(~Genus,scales="free")+
-  stat_compare_means()+
+  stat_compare_means(comparisons = my_comparisons)+
+  scale_fill_manual(values = cluster_colors$Dominance,
+                    name = "Community State Types", 
+                    labels = c("CSTI", "CSTII", "CSTIII","CSTIV") 
+                    )+
+   labs(title = "Abundances of Microorganism in Clusters",
+        x="",
+        y="") +
   theme_minimal()
-
 ```
 ```{r}
 
