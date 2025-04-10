@@ -50,17 +50,15 @@ In this section, we import and preprocess the key dataframes required for the an
 
 #Dataframe output Kraken
 kdata=read.delim("../local/data/bracken_merged_abbundances.num.txt", sep= "\t")
-kdata = kdata[!grepl("sapiens",kdata$name),] # Remove  reads from 'Homo sapiens' 
+kdata = kdata[!grepl("sapiens",kdata$name),]
 rownames(kdata)=kdata$name
-kdata= kdata[,-c(1:3)] # Remove firsts columns (name,taxonomy_id, taxonomy_lvl)
+kdata= kdata[,-c(1:3)] 
 rownames(kdata)<-gsub("'","_",rownames(kdata))
 head(kdata[,1:round(ncol(kdata)/4,0)])
 
 #Dataframe metadata
-meta=read.xlsx("../local/data/metadata.xlsx") #Metadata sequencing information
+meta <- read.xlsx("../local/data/metadata.xlsx")
 kdataf <- sweep(kdata,2,colSums(kdata),"/")
-#Add H/D information in colnames
-# colnames(kdata)=paste(meta[match(colnames(kdata),meta$PatientID),]$SampleType, colnames(kdata), sep="_")
 ```
 
 
