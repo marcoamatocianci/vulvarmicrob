@@ -65,7 +65,6 @@ kdataf <- sweep(kdata,2,colSums(kdata),"/")
 
 ### DECONTAMINATION (Decontam Package)
 ```{r echo=FALSE}
-
 #-----------------------#
 # 1. Data Filtering ----
 #-----------------------#
@@ -160,9 +159,8 @@ This filtering step is essential for focusing the analysis on the most biologica
 kdata=kdata[,!grepl("BP3",colnames(kdata))]
 kdata=kdata[,!grepl("TT4$",colnames(kdata))]
 
-#Filtering of only healthy samples and only species with a minimum of 100 reads in the half of samples
+
 kdataH<-kdata[,grepl("H_",colnames(kdata))]
-#Normalization of dataset based on totnumber of reads (number_of_read/tot_reads_in_sample)
 total_reads<-colSums(kdataH)
 kdataH_frac<-sweep(kdataH, 2, total_reads, "/")
 prc=0.001
@@ -192,16 +190,16 @@ scores$PatientID = sapply(strsplit(scores$sample,"_"),"[", 2)
 ## **PCA Plot on PC1 vs PC2**
 var_explained <- (data_PCA$sdev^2) / sum(data_PCA$sdev^2)
 pca_plot <- ggplot(scores, aes(x = PC1, y = PC2 )) +
-  geom_point(size = 3, alpha = 1,color="#7EB77F") +  # Points with size and transparency
-  theme_minimal(base_size = 14) +     # Minimal theme for a clean design
-    # Add text labels with smart positioning
+  geom_point(size = 3, alpha = 1,color="#7EB77F") +  
+  theme_minimal(base_size = 14) +     
+    
   ggrepel::geom_text_repel(
-    aes(label = sample),  # Replace 'SampleID' with your actual column name
-    color = "#2D5C2F",       # Darker green for contrast
+    aes(label = sample),
+    color = "#2D5C2F",      
     size = 2,
-    box.padding = 0.35,      # Prevent labels from overlapping points
+    box.padding = 0.35,     
     point.padding = 0.3,
-    max.overlaps = 20,       # Adjust based on your data density
+    max.overlaps = 20,      
     segment.color = "gray60",
     min.segment.length = 0.2
   ) +
@@ -230,29 +228,29 @@ NMDS <- vegan::metaMDS(
   t(kdata_frac), 
   distance = "bray", 
   trymax = 100,
-  autotransform = TRUE,  # Auto-transformation enabled (Wisconsin double standardization)
-  k = 4                  # Number of dimensions
+  autotransform = TRUE, 
+  k = 4                 
 )
 
 
-# Extract and prepare scores
-stress_value <- paste("Stress:", round(NMDS$stress, 3))  # Capture stress value
+
+stress_value <- paste("Stress:", round(NMDS$stress, 3))  
 score <- data.frame(
   vegan::scores(NMDS)$site,
   sampleID = rownames(vegan::scores(NMDS)$site)
 ) %>%
   mutate(
-    SampleGroup = sapply(strsplit(sampleID, "\\."), "[", 1)  # Extract sample groups
+    SampleGroup = sapply(strsplit(sampleID, "\\."), "[", 1)  
   )
 
 ggplot(score, aes(x = NMDS1, y = NMDS2)) +
   geom_point(
     size = 3,
     alpha = 0.9,
-    color = "#7EB77F",      # Base color
-    fill = "#7EB77F30",     # Semi-transparent fill
-    shape = 21,             # Filled circle shape
-    stroke = 0.7            # Border thickness
+    color = "#7EB77F",     
+    fill = "#7EB77F30",    
+    shape = 21,             
+    stroke = 0.7            
   ) +
   ggrepel::geom_text_repel(
     aes(label = SampleGroup),
@@ -428,7 +426,7 @@ pheatmap(counts_norm[DGE_filt_list,match(ordered_samples,colnames(counts_norm))]
          cutree_rows = 4,
          angle_col = 45,
          color = viridis(100),
-         breaks= seq(-1.2,1.5,length.out=100)
+         # breaks= seq(-1.2,1.5,length.out=100)
 )
 ```
 
@@ -438,7 +436,7 @@ pheatmap(counts_norm[DGE_filt_list,match(ordered_samples,colnames(counts_norm))]
 bac2<-rowSums(apply(kdata_frac,2,FUN = function(x) x>=0.1))>=1
 genus_frac_filt2<-kdata_frac[bac2,]
 genus_frac_filt2["<10%",]<-1-colSums(genus_frac_filt2)
-mypalette=c("grey80","#f65356","#fb8066","#fea671","#fec979","#feea80","#d7e586","#a5de94","#5daad8","#8187c7","#c56bba")
+mypalette=c("grey80","#f65356","#fb8066","#fea671","#fec979","#feea80","#d7e586","#a5de94","#5daad8","#8187c7","#c56bba","brown")
 
 inerssamples<-rownames(annotationcol)[which(annotationcol$Dominance == "Lactobacillus iners")]
 inersfrac<-genus_frac_filt2[,match(inerssamples,colnames(genus_frac_filt2))]
@@ -486,30 +484,23 @@ othersplot<-ggplot(data=othersfrac,aes(x="",y=means,fill = rownames(inersfrac)))
     xlab(label = "")+
   theme_minimal()
 
-ggarrange(crisplot,inplot, gassplot, othersplot,
+p <- ggarrange(crisplot,inplot, gassplot, othersplot,
                     labels = c("CSTI", "CSTIII", "CSTII","CSTIV"),
                     ncol = 2, nrow = 2)
+ggsave(filename = paste0("../results/images/allCSTscake.svg"), plot = p, width = 15, height = 6, device = svglite)
+
 ```
 
 ```{r}
 genus_frac_filt2$Species <- rownames(genus_frac_filt2)
 
-#### Plot Abbondanze ####
 data_long_10prc <- genus_frac_filt2 %>%
   pivot_longer(
-    cols = starts_with("H_"),   # Specify the columns to pivot
-    names_to = "Category",       # Name of the new column for the original column names
-    values_to = "Value"          # Name of the new column for the values
+    cols = starts_with("H_"),  
+    names_to = "Category",     
+    values_to = "Value"        
   ) 
 
-library(forcats)
-
-# # Assicurati che "Others" sia l'ultimo livello del fattore Species
-#     data_long_10prc$Species <- fct_relevel(data_long_10prc$Species, c("Others"), after = 0)
-#     data_long_10prc$Species <- fct_relevel(data_long_10prc$Species, c("Lactobacillus crispatus"), after = 1)
-#     data_long_10prc$Species <- fct_relevel(data_long_10prc$Species, c("Lactobacillus iners"), after = 2)
-#     data_long_10prc$Species <- fct_relevel(data_long_10prc$Species, c("Lactobacillus jensenii"), after = 3)
-# 
 data_long_10prc$Category<-factor(data_long_10prc$Category,levels = ordered_samples)
 ggplot(data_long_10prc[,], aes(y = Value, x = Category, fill = Species)) +
   geom_col() +
@@ -534,29 +525,29 @@ NMDS <- vegan::metaMDS(
   t(kdata_frac), 
   distance = "bray", 
   trymax = 100,
-  autotransform = TRUE,  # Auto-transformation enabled (Wisconsin double standardization)
-  k = 4                  # Number of dimensions
+  autotransform = TRUE,  
+  k = 4                  
 )
 
 
-# Extract and prepare scores
-stress_value <- paste("Stress:", round(NMDS$stress, 3))  # Capture stress value
+
+stress_value <- paste("Stress:", round(NMDS$stress, 3))
 score <- data.frame(
   vegan::scores(NMDS)$site,
   sampleID = rownames(vegan::scores(NMDS)$site)
 ) %>%
   mutate(
-    SampleGroup = sapply(strsplit(sampleID, "\\."), "[", 1)  # Extract sample groups
+    SampleGroup = sapply(strsplit(sampleID, "\\."), "[", 1)
   )
 score <- merge(score,final_annotationcol,by = 0)
 p <- ggplot(score, aes(x = NMDS1, y = NMDS2)) +
   geom_point(
-    aes(fill = Dominance),  # Moved 'fill' mapping here
+    aes(fill = Dominance), 
     size = 6,
     alpha = 0.9,
-    color = "grey40",      # Border color
-    shape = 21,             # Filled circle
-    stroke = 0.7            # Border thickness
+    color = "grey40",      
+    shape = 21,            
+    stroke = 0.7           
   ) +
   scale_fill_manual(values = cluster_colors$Dominance,
                     name = "Community State Type", 
@@ -577,7 +568,7 @@ p <- ggplot(score, aes(x = NMDS1, y = NMDS2)) +
     panel.grid.minor = element_blank(),
     plot.background = element_rect(fill = "white", color = NA)
   ) +
-  coord_fixed()  # Maintain aspect ratio
+  coord_fixed() 
  ggsave(filename = paste0("../results/images/NMDSCluster.svg"), plot = p, width = 8, height = 6, device = svglite)
 
 
@@ -589,32 +580,37 @@ nreads_max<-max(colSums(kdata_filt))
 fold<-round(nreads_max/nreads_min,0)
 
 kdata_subs<-rrarefy(t(kdata_filt),nreads_min)
-alpha_subs<-diversity(kdata_subs)#t(kdata[,match(ordered_samples,colnames(kdata))])
+alpha_subs<-diversity(kdata_subs)
 alphasubs=data.frame(samples=names(alpha_subs),value=alpha_subs)
 alphasubs$samples<-factor(alphasubs$samples,ordered_samples)
 alphasubs<-merge(alphasubs,final_annotationcol,by=0) %>% tibble::column_to_rownames("Row.names")
 
 my_comparisons <- list( c("cl_1","cl_2"),c("cl_1","cl_3"),c("cl_1","cl_4"),c("cl_3","cl_2"),c("cl_4","cl_2"),c("cl_3","cl_4"))
 
-ggplot(alphasubs,aes(x=Clusters,y=value,fill = Clusters))+
+p <- ggplot(alphasubs,aes(x=Clusters,y=value,fill = Clusters))+
   geom_boxplot()+  
   scale_fill_manual(values = c("cl_1" = "#468B74" , "cl_2" ="#F58B1F", "cl_3" = "#92C73E","cl_4" =  "#EC1E24"))+
   stat_compare_means(comparisons=my_comparisons)+
   theme_bw()
 
-ggplot(alphasubs, aes(x = samples, y = factor(1), size = value, colour = value)) +
+ggsave(filename = paste0("../results/images/Boxplotalpha.svg"), plot = p, width = 8, height = 6, device = svglite)
+
+
+p <- ggplot(alphasubs, aes(x = samples, y = factor(1), size = value, colour = value)) +
   geom_point() +
   scale_size_continuous(range = c(5, 15)) +
-  scale_color_gradient(low = "grey90", high = "#D94943") +  # Intensity of color
+  scale_color_gradient(low = "grey90", high = "#D94943") +  
   theme_bw() +
   theme(
     axis.title.y = element_blank(),
     axis.text.y = element_blank(),
     axis.ticks.y = element_blank(),
     panel.grid = element_blank(),
-    legend.position = "none"  # Hide the legend
+    legend.position = "none"  
   )+
   coord_fixed(ratio = 2)
+ggsave(filename = paste0("../results/images/alphascore.svg"), plot = p, width = 15, height = 6, device = svglite)
+
 
 ```
 
@@ -634,57 +630,58 @@ genus_frac<-arrange(genus_frac,desc(sum))
 genus_frac$sum<-NULL
 
 prc=0.03
-#--- Show only the ones over 20%
 bac<-rowSums(apply(genus_frac,2,FUN = function(x) x>= prc))>=1
 genus_frac_filt<-genus_frac[bac,]
 
 
 correlation<-cor(t(genus_frac_filt))
-pheatmap(correlation)
+p <- pheatmap(correlation)
+ggsave(filename = paste0("../results/images/correlationgeneri.svg"), plot = p, width = 10, height = 6, device = svglite)
 
 ```
 
 ```{r}
 
-mypalette<-c("#aaa","#dc89ba","#94479c","#54478c" ,"#2c699a", "#048ba8", "#0db39e", "#83e377", "#b9e769", "#efea5a", "#f1c453", "#f29e4c","#D94943","#a4161a","#61161a","#21161a")
+mypalette<-c("#aaa","#ac99ba","#dc89ba","#94479c","#54478c" ,"#2c699a", "#048ba8", "#0db39e", "#83e377", "#b9e769", "#efea5a", "#f1c453", "#f29e4c","#f26e2c","#D94943","#a4161a","#61161a","#21161a")
 genus_frac_filt$Genus <- rownames(genus_frac_filt)
 
-#### Plot Abbondanze ####
 data_long_gen <- genus_frac_filt %>%
   pivot_longer(
-    cols = starts_with("H_"),   # Specify the columns to pivot
-    names_to = "Category",       # Name of the new column for the original column names
-    values_to = "Value"          # Name of the new column for the values
+    cols = starts_with("H_"),   
+    names_to = "Category",      
+    values_to = "Value"         
   ) 
 
 
 data_long_gen<-merge(data_long_gen,final_annotationcol,by.x="Category",by.y=0)
 data_long_gen$Category<-factor(data_long_gen$Category,levels = ordered_samples)
 
-###ORDINA PER CLUSTER
-ggplot(data_long_gen, aes(y = Value, x = Category, fill = Genus)) +
+p <- ggplot(data_long_gen, aes(y = Value, x = Category, fill = Genus)) +
   geom_col(width = 0.98) +
   scale_fill_manual(values = mypalette)+
-  theme_minimal()  # Usa un tema semplice
+  theme_minimal() 
+ggsave(filename = "../results/images/BarPlotGeneri.svg", plot = p, width = 8, height = 6,device = svglite)
 
 data_long_gen<-subset(data_long_gen,Genus!="Lactobacillus")
 
-ggplot(data_long_gen, aes(x = Genus, y = Category, size = Value, fill = Genus)) +
+p <- ggplot(data_long_gen, aes(x = Genus, y = Category, size = Value, fill = Genus)) +
   geom_point(alpha = 0.7, shape = 21) +
   ggtitle(label=paste0("BubblePlot ",prc*100,"%"))+
   scale_fill_manual(values = mypalette)+
-  scale_size_continuous(range = c(0, 27)) +  # Adjust the range for bubble sizes
+  scale_size_continuous(range = c(0, 27)) + 
   theme_minimal()+ 
-  theme(legend.position = "right",axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))  # Position the legend as needed
+  theme(legend.position = "right",axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) 
 
-colSums(genus_frac_filt[,-ncol(genus_frac_filt)])
-# Pairwise comparisons: Specify the comparisons you want
+ggsave(filename = "../results/images/BubblePlotGeneri.svg", plot = p, width = 8, height = 10,device = svglite)
+
+
+
 my_comparisons <- list( c("Lactobacillus crispatus", "Lactobacillus iners"), c("Lactobacillus iners", "Lactobacillus gasseri"), c("Lactobacillus crispatus", "Others"),c("Lactobacillus gasseri", "Others"),c("Lactobacillus iners", "Others"),c("Lactobacillus crispatus", "Lactobacillus gasseri"))
 
 
 data_long_gen$Cluster<-final_annotationcol[match(data_long_gen$Category,rownames(final_annotationcol)),]$Dominance
 
-ggplot(data_long_gen,aes(x = Cluster,y=Value,fill = Cluster))+
+p=ggplot(data_long_gen,aes(x = Cluster,y=Value,fill = Cluster))+
   geom_boxplot()+
   geom_jitter(alpha=0.9)+
   facet_wrap(~Genus,scales="free")+
@@ -693,10 +690,12 @@ ggplot(data_long_gen,aes(x = Cluster,y=Value,fill = Cluster))+
                     name = "Community State Types", 
                     labels = c("CSTI", "CSTII", "CSTIII","CSTIV") 
                     )+
+   scale_x_discrete(labels = c("CSTI", "CSTII", "CSTIII", "CSTIV")) +
    labs(title = "Abundances of Microorganism in Clusters",
         x="",
         y="") +
   theme_minimal()
+ggsave(filename = "../results/images/AbundancesinClusters.svg", plot = p, width = 15, height = 15,device = svglite)
 ```
 ```{r}
 
@@ -726,7 +725,7 @@ disbiodb=data.frame(samples=names(unlist(diseasescore)),dysbio=unlist(diseasesco
 disbiodb$samples=factor(disbiodb$samples,ordered_samples)
 disbiodb$dysbio<-disbiodb$dysbio
 
-ggplot(disbiodb, aes(x = samples, y = factor(1), size = dysbio, colour = dysbio)) +
+p <- ggplot(disbiodb, aes(x = samples, y = factor(1), size = dysbio, colour = dysbio)) +
   geom_point() +
   scale_size_continuous(range = c(5, 15)) +
   scale_color_gradient(low = "grey90", high = "#0070BB") +  # Intensity of color
@@ -740,6 +739,7 @@ ggplot(disbiodb, aes(x = samples, y = factor(1), size = dysbio, colour = dysbio)
   )+
   coord_fixed(ratio = 2)
 
+ggsave(filename = paste0("../results/images/disbioscore.svg"), plot = p, width = 15, height = 6, device = svglite)
 write.csv(merge(final_annotationcol,disbiodb,by=0) %>% tibble::column_to_rownames("Row.names"),"../results/cluster_col.csv")
 
 ```
@@ -789,6 +789,6 @@ plot <- ggplot(x, aes(x = value, y = dysbio)) +
     legend.position="none"
   )
 
-
- ggsave(filename = "../results/images/corralphadisbyo.svg", plot = plot, width = 8, height = 6,device = svglite)
+plot
+ggsave(filename = "../results/images/corralphadisbyo.svg", plot = plot, width = 8, height = 6,device = svglite)
 ```
