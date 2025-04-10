@@ -37,14 +37,11 @@ knitr::opts_knit$set(root.dir = script_dir)
 
 ```{r echo=FALSE}
 
-#Dataframe output Kraken
 df_rna_frac <- read.delim("../results/brackenabundances_normtss.txt", sep="\t")
 df_rna_frac <- df_rna_frac[,!grepl("TT81",colnames(df_rna_frac))] 
 df_rna_frac <- df_rna_frac[,!grepl("TT60",colnames(df_rna_frac))]
-##ONLY HEALTY###
 kdataH = df_rna_frac[, grepl("H_", colnames(df_rna_frac))]
 df_rna_frac<-kdataH
-#Dataframe metadata
 meta <- read.xlsx("../local/data/metadata.xlsx")
 ```
 

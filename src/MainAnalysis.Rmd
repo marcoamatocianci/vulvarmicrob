@@ -289,7 +289,6 @@ ggplot(score, aes(x = NMDS1, y = NMDS2)) +
 ### Matrice di Distanze ###
 
 beta_rna <- vegdist(t(kdata_frac), method = "bray")
-# beta_rna <- dist(t(b))
 betamtx<-as.matrix(beta_rna)
 pheatmap(betamtx, 
          # color = viridis,
