@@ -4,10 +4,11 @@ This repository contains computational workflows for analyzing vulvar microbiome
 ## Repository Structure
 ```
 project/
-├── data/
+├── local/
+│ ├── data/
 ├── results/
 ├── scripts/
-│ ├── MainAnalysis.Rmd # Characterization & clustering
+│ ├── MainAnalysis.Rmd
 │ └── ComparativeDNA-RNA.Rmd
 └── README.md
 ```
@@ -18,21 +19,19 @@ project/
 Processes RNA-seq data to:
 - Import taxonomic abundances from Kraken/Bracken
 - Perform **class discovery** through:
-  - Dirichlet Multinomial Mixtures (CST identification)
-  - PAM clustering with silhouette width validation
+  - CST identification
+  - Hierarchical Clustering 
 - Calculate alpha diversity metrics:
   - Shannon Index
-  - Chao1 Richness
-- Assess dysbiosis using:
-  - Community State Type (CST) prevalence analysis
-  - Differential abundance testing (DESeq2)
+- Assess dysbiosis using
+- Differential abundance testing
 
-## Analysis 2: Methodological Comparison
-**Code:** `MethodComparison.Rmd`  
+## Analysis 2: Methodological Comparison (RNA - DNA)
+**Code:** `ComparisonDNA-RNA.Rmd`  
 Evaluates RNA-seq against shotgun metagenomics for:
-- Taxonomic concordance (Genus-level Bray-Curtis similarity)
+- Taxonomic concordance
 - Sensitivity analysis for low-abundance taxa
-- Computational resource benchmarking
 - Correlation of diversity metrics between platforms
 
-## Installation
+## Analysis 3: Cross Studies 
+
