@@ -14,7 +14,15 @@ project/
 ```
 <img src="https://github.com/user-attachments/assets/01ca6b41-6e4a-446d-84f4-dc33419d6ad0" width="600" height="500">
 
-## Analysis 1: Vulvar Microbiome Characterization
+
+## Analysis 1: Methodological Comparison (RNA - DNA)
+**Code:** `ComparisonDNA-RNA.Rmd`  
+Evaluates RNA-seq against shotgun metagenomics for:
+- Taxonomic concordance
+- Sensitivity analysis for low-abundance taxa
+- Correlation of diversity metrics between platforms
+
+## Analysis 2: Vulvar Microbiome Characterization
 **Code:** `MainAnalysis.Rmd`  
 Processes RNA-seq data to:
 - Import taxonomic abundances from Kraken/Bracken
@@ -25,13 +33,6 @@ Processes RNA-seq data to:
   - Shannon Index
 - Assess dysbiosis using
 - Differential abundance testing
-
-## Analysis 2: Methodological Comparison (RNA - DNA)
-**Code:** `ComparisonDNA-RNA.Rmd`  
-Evaluates RNA-seq against shotgun metagenomics for:
-- Taxonomic concordance
-- Sensitivity analysis for low-abundance taxa
-- Correlation of diversity metrics between platforms
 
 ## Analysis 3: Cross Studies 
 
