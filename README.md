@@ -16,7 +16,13 @@ project/
 
 ## Analysis 0: Decontamination and Filtering
 **Code:** `DataPreparation.Rmd`
-
+- Decontamination and Filtering of Abundance Data
+**Input:** `local/data/bracken_merged_abbundances.num.txt`
+**Results:**
+  -`countsToT_decont.txt` - Abundances decontaminated
+  -`countsToT_decont_normtss.txt` Abundances decontaminated and normalized (TSS)
+  -`counts_decont_filtered.txt` Abundances decontaminated and filtered ( 0.1% relative abudance in at least 1 sample )
+  
 ## Analysis 1: Methodological Comparison (RNA - DNA)
 **Code:** `ComparisonDNA-RNA.Rmd`  
 Evaluates RNA-seq against shotgun metagenomics for:
