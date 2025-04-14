@@ -14,7 +14,7 @@ project/
 ```
 <img src="https://github.com/user-attachments/assets/01ca6b41-6e4a-446d-84f4-dc33419d6ad0" width="600" height="500">
 
-## Analysis 0: Filtering, Normalization and Decontamination
+## Analysis 0: Decontamination and Filtering
 **Code:** `DataPreparation.Rmd`
 
 ## Analysis 1: Methodological Comparison (RNA - DNA)
