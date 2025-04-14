@@ -60,9 +60,9 @@ idx = which(rowSums(kdata >= 50) >= ncol(kdata)/4)
 kdata_filt= as.data.frame(kdata[idx,])
 
 
-kdataus=read.delim("../results/decontaminated_counts.txt",sep= "\t")
+kdataus=read.delim("../results/countsToT_decont.txt",sep= "\t")
 kdataus=kdataus+1
-samp=read.xlsx("../local/data/metadata.xlsx")
+samp=read.xlsx("../local/data/Vulvodinia_Samples.xlsx")
 
 
 kdataH=kdataus[,grepl("H_",colnames(kdataus))]

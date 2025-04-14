@@ -1,0 +1,138 @@
+---
+title: "DataPreparation.Rmd"
+author: "Marco Amato Cianci"
+date: "2025-04-14"
+output: html_document
+---
+
+```{r echo=FALSE, warning=FALSE}
+suppressMessages(library(DirichletMultinomial))
+suppressMessages(library(rstudioapi))
+suppressMessages(library(openxlsx))
+suppressMessages(library(dplyr))
+```
+
+```{r echo=FALSE, warning=FALSE}
+script_dir <- dirname(getActiveDocumentContext()$path)
+setwd(script_dir)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = script_dir)
+```
+
+In this section, we import and preprocess the key dataframes required for the analysis of the **vulvar microbiome**. The datasets include microbiome absolute abundances generated using Kraken, samples metadata, and gene expression counts, all of which are crucial for subsequent statistical and bioinformatic analysis.
+
+-   **Kraken Output**: The dataframe `kdata` represents the taxonomic abundances from the Kraken output. To eliminate potential human DNA contamination, reads associated with *Homo sapiens* have been filtered out.
+
+-   **Metadata**: The `meta` dataframe includes relevant clinical and experimental information about the cohort, containing details for each sample in the study, such as patient/control status.
+
+
+```{r echo=FALSE}
+
+#Dataframe output Kraken
+kdata=read.delim("../local/data/bracken_merged_abbundances.num.txt", sep= "\t")
+kdata = kdata[!grepl("sapiens",kdata$name),]
+rownames(kdata)=kdata$name
+kdata= kdata[,-c(1:3)] 
+rownames(kdata)<-gsub("'","_",rownames(kdata))
+head(kdata[,1:round(ncol(kdata)/4,0)])
+
+#Dataframe metadata
+meta <- read.xlsx("../local/data/Vulvodinia_Samples.xlsx")
+kdataf <- sweep(kdata,2,colSums(kdata),"/")
+```
+
+
+### DECONTAMINATION (Decontam Package)
+```{r echo=FALSE}
+#-----------------------#
+# 1. Data Filtering ----
+#-----------------------#
+# Filter metadata and align with kdata
+
+meta<-meta %>% filter(Analysis.first.draf == "YES")
+kdata<-kdata[,unique(paste0(meta$SampleType,"_",meta$PatientID))]
+
+# Prepare decontamination metadata
+kdata_dec <- kdata
+colnames(kdata_dec)<-sapply(strsplit(colnames(kdata_dec),"_"),"[", 2)
+
+deconmeta<-meta %>% 
+  mutate(sample = paste(SampleType,PatientID, sep="_")) %>%
+  filter(PatientID %in% colnames(kdata_dec)) %>%         
+  dplyr::select(PatientID,sample,`Concentration(ng/ul)-QUBIT`,`Date(libraryready)`,Run,RNA.extraction,`Tape(Library)`,SampleType) %>%
+  distinct(PatientID, .keep_all = TRUE) %>%
+  filter(`Concentration(ng/ul)-QUBIT` != "NA") %>%
+  mutate(`Concentration(ng/ul)-QUBIT` = ifelse(`Concentration(ng/ul)-QUBIT` == "toolow", 0.01, `Concentration(ng/ul)-QUBIT`)) %>%
+  tibble::column_to_rownames("sample") %>%
+  filter(RNA.extraction %in% names(table(RNA.extraction))[which(table(RNA.extraction) > 1)])
+
+
+#-----------------------------------------#
+# 2. Phyloseq Object Preparation ----
+#-----------------------------------------#
+## Sample Table ##
+
+samplesdeconmeta<-sample_data(
+  data.frame(
+    row.names = deconmeta$PatientID,
+    SampleID = deconmeta$PatientID,
+    Sample_or_Control=c(rep("Sample",nrow(deconmeta))), 
+    quant_reading=as.numeric(as.character(deconmeta$`Concentration(ng/ul)-QUBIT`)), 
+    run= deconmeta$Run,rnaextr=deconmeta$RNA.extraction, 
+    libraries=deconmeta$`Date(libraryready)`,
+    SampleType=deconmeta$SampleType
+   )
+)
+
+## OTU Table ##
+
+kdata_dec <- kdata_dec[,colnames(kdata_dec) %in% rownames(samplesdeconmeta)]
+otutable <- otu_table(kdata_dec,taxa_are_rows = TRUE)
+
+# Create Phyloseq object
+ps <- phyloseq(otutable, samplesdeconmeta)
+
+#-----------------------------------------#
+# 3. Decontamination Analysis ----
+#-----------------------------------------#
+
+# Identify contaminants using frequency method
+contamdf.freqrnaextr <- isContaminant(
+  ps, 
+  method="frequency", 
+  conc="quant_reading",
+  batch="rnaextr",
+  threshold=0.1
+)
+
+# Filter non-contaminants
+rnaextrcontfree <- rownames(filter(contamdf.freqrnaextr, contaminant == FALSE))
+
+#-----------------------------------------#
+# 4. Save Clean Data ----
+#-----------------------------------------#
+x<-sweep(kdata,2,colSums(kdata),"/")
+x<-x %>% filter(rownames(x) %in% rnaextrcontfree)
+kdata <- kdata %>% 
+  filter(rownames(.) %in% rnaextrcontfree)
+
+write.table(x, file = "../results/countsToT_decont_normtss.txt", sep = "\t")
+write.table(kdata, file = "../results/countsToT_decont.txt", sep = "\t")
+```
+
+### FILTERING 
+##### Take the species with more than 0.1% relative abudance in at least 1 sample
+```{r echo=FALSE}
+##Remove the outliers
+kdata <- kdata[,!grepl("BP3",colnames(kdata))]
+kdata<-kdata[,!grepl("TT4$",colnames(kdata))]
+kdataH<-kdata[,grepl("H_",colnames(kdata))]
+total_reads<-colSums(kdataH)
+kdataH_frac<-sweep(kdataH, 2, total_reads, "/")
+prc<-0.001
+idx<- which(rowSums(kdataH_frac >= prc) >= round(ncol(kdataH_frac)/10,0))
+kdataH_frac<- as.data.frame(kdataH_frac[idx,])
+filtered_micro<-rownames(kdataH_frac)
+kdata_filt<-kdataH[filtered_micro,]
+write.table(kdata_filt,"../results/counts_decont_filtered.txt", sep="\t")
+```

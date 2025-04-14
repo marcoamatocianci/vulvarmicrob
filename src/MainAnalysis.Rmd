@@ -3,7 +3,6 @@ title: "PaperMicroUltimate"
 output: html_document
 date: "2024-10-04"
 ---
-
 ```{r echo=FALSE, warning=FALSE}
 suppressMessages(library(DirichletMultinomial))
 suppressMessages(library(rstudioapi))
@@ -29,7 +28,7 @@ suppressMessages(library(decontam))
 suppressMessages(library(waffle))
 suppressMessages(library(janitor))
 suppressMessages(library(rlang))
-suppressMessages(library(svglite))
+suppressMessages(library(svglite)) 
 ```
 
 ```{r echo=FALSE, warning=FALSE}
@@ -39,136 +38,9 @@ knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_knit$set(root.dir = script_dir)
 ```
 
-In this section, we import and preprocess the key dataframes required for the analysis of the **vulvar microbiome**. The datasets include microbiome absolute abundances generated using Kraken, samples metadata, and gene expression counts, all of which are crucial for subsequent statistical and bioinformatic analysis.
-
--   **Kraken Output**: The dataframe `kdata` represents the taxonomic abundances from the Kraken output. To eliminate potential human DNA contamination, reads associated with *Homo sapiens* have been filtered out.
-
--   **Metadata**: The `meta` dataframe includes relevant clinical and experimental information about the cohort, containing details for each sample in the study, such as patient/control status.
-
-
-```{r echo=FALSE}
-
-#Dataframe output Kraken
-kdata=read.delim("../local/data/bracken_merged_abbundances.num.txt", sep= "\t")
-kdata = kdata[!grepl("sapiens",kdata$name),]
-rownames(kdata)=kdata$name
-kdata= kdata[,-c(1:3)] 
-rownames(kdata)<-gsub("'","_",rownames(kdata))
-head(kdata[,1:round(ncol(kdata)/4,0)])
-
-#Dataframe metadata
-meta <- read.xlsx("../local/data/metadata.xlsx")
-kdataf <- sweep(kdata,2,colSums(kdata),"/")
-```
-
-
-
-### DECONTAMINATION (Decontam Package)
-```{r echo=FALSE}
-#-----------------------#
-# 1. Data Filtering ----
-#-----------------------#
-# Filter metadata and align with kdata
-
-meta<-meta %>% filter(Analysis.first.draf == "YES")
-kdata<-kdata[,unique(paste0(meta$SampleType,"_",meta$PatientID))]
-
-# Prepare decontamination metadata
-kdata_dec <- kdata
-colnames(kdata_dec)<-sapply(strsplit(colnames(kdata_dec),"_"),"[", 2)
-
-deconmeta<-meta %>% 
-  mutate(sample = paste(SampleType,PatientID, sep="_")) %>%
-  filter(PatientID %in% colnames(kdata_dec)) %>%         
-  dplyr::select(PatientID,sample,`Concentration(ng/ul)-QUBIT`,`Date(libraryready)`,Run,RNA.extraction,`Tape(Library)`,SampleType) %>%
-  distinct(PatientID, .keep_all = TRUE) %>%
-  filter(`Concentration(ng/ul)-QUBIT` != "NA") %>%
-  mutate(`Concentration(ng/ul)-QUBIT` = ifelse(`Concentration(ng/ul)-QUBIT` == "toolow", 0.01, `Concentration(ng/ul)-QUBIT`)) %>%
-  tibble::column_to_rownames("sample") %>%
-  filter(RNA.extraction %in% names(table(RNA.extraction))[which(table(RNA.extraction) > 1)])
-
-
-#-----------------------------------------#
-# 2. Phyloseq Object Preparation ----
-#-----------------------------------------#
-## Sample Table ##
-
-samplesdeconmeta<-sample_data(
-  data.frame(
-    row.names = deconmeta$PatientID,
-    SampleID = deconmeta$PatientID,
-    Sample_or_Control=c(rep("Sample",nrow(deconmeta))), 
-    quant_reading=as.numeric(as.character(deconmeta$`Concentration(ng/ul)-QUBIT`)), 
-    run= deconmeta$Run,rnaextr=deconmeta$RNA.extraction, 
-    libraries=deconmeta$`Date(libraryready)`,
-    SampleType=deconmeta$SampleType
-   )
-)
-
-## OTU Table ##
-
-kdata_dec <- kdata_dec[,colnames(kdata_dec) %in% rownames(samplesdeconmeta)]
-otutable <- otu_table(kdata_dec,taxa_are_rows = TRUE)
-
-# Create Phyloseq object
-ps <- phyloseq(otutable, samplesdeconmeta)
-
-#-----------------------------------------#
-# 3. Decontamination Analysis ----
-#-----------------------------------------#
-
-# Identify contaminants using frequency method
-contamdf.freqrnaextr <- isContaminant(
-  ps, 
-  method="frequency", 
-  conc="quant_reading",
-  batch="rnaextr",
-  threshold=0.1
-)
-
-# Filter non-contaminants
-rnaextrcontfree <- rownames(filter(contamdf.freqrnaextr, contaminant == FALSE))
-
-#-----------------------------------------#
-# 4. Save Clean Data ----
-#-----------------------------------------#
-x<-sweep(kdata,2,colSums(kdata),"/")
-x<-x %>% filter(rownames(x) %in% rnaextrcontfree)
-kdata <- kdata %>% 
-  filter(rownames(.) %in% rnaextrcontfree)
-
-write.table(x, file = "../results/brackenabundances_normtss.txt", sep = "\t")
-write.table(kdata, file = "../results/decontaminated_counts.txt", sep = "\t")
-```
-## **Filtering Dataframes Based on Read Counts**
-
-In this step, we apply a filtering criteria to retain only the species with significant read counts in both control (H) and disease (D) groups. Specifically, we select species that have at least 100 reads in 50% or more of the samples within each condition. This filtering process ensures that the analysis focuses on the most abundant and relevant microorganisms across the dataset.
-
-1. **Condition-Specific Filtering**: The columns in the `kdata` dataframe are relabeled based on the sample type (H or D), allowing easy identification of samples belonging to each condition. The dataframe is then split into two subsets: one for disease samples (`kdataD`) and one for healthy controls (`kdataH`).
-
-2. **Selection Criteria**: Species that meet the threshold of 100 reads in at least half of the samples in either the disease or control group are retained. This ensures that only taxa with significant representation across the conditions are included in the analysis.
-
-3. **Final Filtered Dataset**: The filtered dataframe `kdata_filt` contains the selected microorganisms, ordered by their total read counts across all samples, providing a curated list of species for downstream analysis.
-
-This filtering step is essential for focusing the analysis on the most biologically relevant taxa and minimizing noise from low-abundance species.
-
-##### Take the species with more than 100 reads in at least 50% of each condition (H/D)
-
-```{r echo=FALSE}
-##Remove the outliers
-kdata=kdata[,!grepl("BP3",colnames(kdata))]
-kdata=kdata[,!grepl("TT4$",colnames(kdata))]
-
-
-kdataH<-kdata[,grepl("H_",colnames(kdata))]
-total_reads<-colSums(kdataH)
-kdataH_frac<-sweep(kdataH, 2, total_reads, "/")
-prc=0.001
-idx= which(rowSums(kdataH_frac >= prc) >= round(ncol(kdataH_frac)/10,0))
-kdataH_frac= as.data.frame(kdataH_frac[idx,])
-filtered_micro<-rownames(kdataH_frac)
-kdata_filt<-kdataH[filtered_micro,]
-
+### Normalization TSS
+```{r}
+kdata_filt <- read.delim("../results/counts_decont_filtered.txt", sep="\t")
 #------------------------------#
 # 1. Total Sum Scaling (TSS) ----
 #------------------------------#
@@ -181,11 +53,11 @@ kdata_frac<-sweep(kdata_filt,2,colSums(kdata_filt),"/")
 ```{r echo=FALSE}
 
 #Performing a PCA on these data
-data_PCA = prcomp(t(kdata_frac), scale = T)
-scores = data.frame(sample = rownames(data_PCA$x), PC1 = data_PCA$x[,1], PC2 = data_PCA$x[,2], PC3 = data_PCA$x[,3])
-scores$sample = rownames(scores)
-scores$status = sapply(strsplit(scores$sample,"_"),"[", 1)
-scores$PatientID = sapply(strsplit(scores$sample,"_"),"[", 2)
+data_PCA <- prcomp(t(kdata_frac), scale = T)
+scores <- data.frame(sample = rownames(data_PCA$x), PC1 = data_PCA$x[,1], PC2 = data_PCA$x[,2], PC3 = data_PCA$x[,3])
+scores$sample <- rownames(scores)
+scores$status <- sapply(strsplit(scores$sample,"_"),"[", 1)
+scores$PatientID <- sapply(strsplit(scores$sample,"_"),"[", 2)
 
 ## **PCA Plot on PC1 vs PC2**
 var_explained <- (data_PCA$sdev^2) / sum(data_PCA$sdev^2)
@@ -309,13 +181,13 @@ plot(colored_dend, type = "triangle", ylab = "Height")
 write.dendrogram(dend, file = "../results/Dendrogram.nwk", edges = TRUE)
 
 #Labels for later orders
-ordered_samples<-labels(dend)
-ordereds_samples_2=sapply(strsplit(ordered_samples,"_"),"[",2)
-kdata_frac=kdata_frac[rowSums(kdata_frac)!=0,match(ordered_samples,colnames(kdata_frac))]
+ordered_samples <- labels(dend)
+ordereds_samples_2 <- sapply(strsplit(ordered_samples,"_"),"[",2)
+kdata_frac <- kdata_frac[rowSums(kdata_frac)!=0,match(ordered_samples,colnames(kdata_frac))]
 
 
 ### Setting Dominance of CST found in Vaginal microbiome
-species=c("Lactobacillus iners","Lactobacillus crispatus","Lactobacillus gasseri","Lactobacillus jensenii")
+species <- c("Lactobacillus iners","Lactobacillus crispatus","Lactobacillus gasseri","Lactobacillus jensenii")
 custom_colors <- c(
    "Lactobacillus crispatus" = "#F58B1F",
   "Lactobacillus iners" = "#92C73E",  
@@ -325,8 +197,8 @@ custom_colors <- c(
   )
 
 ### Creating Dominance Dataframe
-lacto=as.data.frame(kdata_frac[rownames(kdata_frac) %in% species,])
-cstdata=rbind(lacto,Others=1-colSums(lacto))
+lacto <- as.data.frame(kdata_frac[rownames(kdata_frac) %in% species,])
+cstdata <- rbind(lacto,Others=1-colSums(lacto))
 cstdata$Species <- rownames(cstdata)
 
 data_long <- cstdata %>%
@@ -349,19 +221,17 @@ ggplot(data_long, aes(y = Value, x = Category, fill = Species,)) +
 
 #### Heatmap ####
 
-annotationcol=data_long %>% group_by(Category) %>% filter(Value==max(Value)) 
-annotationcol=data.frame(row.names = annotationcol$Category, Dominance=annotationcol$Species)
+annotationcol <- data_long %>% group_by(Category) %>% filter(Value==max(Value)) 
+annotationcol <- data.frame(row.names = annotationcol$Category, Dominance=annotationcol$Species)
 
-cluster_col=data.frame(row.names = names(clusters),Clusters=clusters)#,Clusters_scaled=clusters_scaled)
-cluster_col$Clusters=paste0("cl_",cluster_col$Clusters)
-# cluster_col$Clusters_scaled=paste0("cl_",cluster_col$Clusters_scaled)
+cluster_col <- data.frame(row.names = names(clusters),Clusters=clusters)#,Clusters_scaled=clusters_scaled)
+cluster_col$Clusters <- paste0("cl_",cluster_col$Clusters)
 
-final_annotationcol=merge(annotationcol,cluster_col,by=0)
-rownames(final_annotationcol)=final_annotationcol$Row.names
-final_annotationcol$Row.names=NULL
+final_annotationcol <- merge(annotationcol,cluster_col,by=0)
+rownames(final_annotationcol) <- final_annotationcol$Row.names
+final_annotationcol$Row.names <- NULL
 final_annotationcol<-arrange(final_annotationcol,Clusters)
 
-#Clusters_scaled =  c("cl_1"="#264653",  "cl_2"="#2A9D8F","cl_3"="#E9C46A", "cl_4"="#F4A261" )
 
 cluster_colors <- list(Clusters = c("cl_1" = "#468B74" , "cl_2" ="#F58B1F", "cl_3" = "#92C73E","cl_4" =  "#EC1E24"), Dominance=  c("Lactobacillus crispatus" = "#F58B1F", "Lactobacillus gasseri" = "#EC1E24","Lactobacillus iners" = "#92C73E",  "Others" = "#468B74"  ,   "Lactobacillus jensenii" = "#35459B"))
 
@@ -408,7 +278,7 @@ DGE<-lapply(unique(cluster_col$Clusters), function(cluster) {
            return(results)
              })
 
-names(DGE)=unique(cluster_col$Clusters)
+names(DGE) <- unique(cluster_col$Clusters)
 DGE_filt<- lapply(DGE,function(x) rownames(subset(x,padj<=0.1 & abs(logMedianChange)>=0.5)))
 DGE_filt_list <- unique(do.call(c,DGE_filt)) 
 
@@ -435,7 +305,7 @@ pheatmap(counts_norm[DGE_filt_list,match(ordered_samples,colnames(counts_norm))]
 bac2<-rowSums(apply(kdata_frac,2,FUN = function(x) x>=0.1))>=1
 genus_frac_filt2<-kdata_frac[bac2,]
 genus_frac_filt2["<10%",]<-1-colSums(genus_frac_filt2)
-mypalette=c("grey80","#f65356","#fb8066","#fea671","#fec979","#feea80","#d7e586","#a5de94","#5daad8","#8187c7","#c56bba","brown")
+mypalette <- c("grey80","#f65356","#fb8066","#fea671","#fec979","#feea80","#d7e586","#a5de94","#5daad8","#8187c7","#c56bba","brown")
 
 inerssamples<-rownames(annotationcol)[which(annotationcol$Dominance == "Lactobacillus iners")]
 inersfrac<-genus_frac_filt2[,match(inerssamples,colnames(genus_frac_filt2))]
@@ -574,6 +444,7 @@ p <- ggplot(score, aes(x = NMDS1, y = NMDS2)) +
 ```
 
 ```{r alphadiversity}
+
 nreads_min<-min(colSums(kdata_filt))
 nreads_max<-max(colSums(kdata_filt))
 fold<-round(nreads_max/nreads_min,0)
@@ -584,11 +455,18 @@ alphasubs=data.frame(samples=names(alpha_subs),value=alpha_subs)
 alphasubs$samples<-factor(alphasubs$samples,ordered_samples)
 alphasubs<-merge(alphasubs,final_annotationcol,by=0) %>% tibble::column_to_rownames("Row.names")
 
-my_comparisons <- list( c("cl_1","cl_2"),c("cl_1","cl_3"),c("cl_1","cl_4"),c("cl_3","cl_2"),c("cl_4","cl_2"),c("cl_3","cl_4"))
+alphasubs <- alphasubs %>%
+  mutate(Dominance = case_when(
+    Dominance == "Lactobacillus crispatus" ~ "CSTI",
+    Dominance == "Lactobacillus iners" ~ "CSTIII",
+    Dominance == "Lactobacillus gasseri" ~ "CSTII",
+    Dominance == "Others" ~ "CSTIV",
+  ))
+my_comparisons <- list( c("CSTIV","CSTI"),c("CSTIV","CSTIII"),c("CSTIV","CSTII"),c("CSTIII","CSTI"),c("CSTII","CSTI"),c("CSTIII","CSTII"))
 
-p <- ggplot(alphasubs,aes(x=Clusters,y=value,fill = Clusters))+
+p <- ggplot(alphasubs,aes(x=Dominance,y=value,fill = Dominance))+
   geom_boxplot()+  
-  scale_fill_manual(values = c("cl_1" = "#468B74" , "cl_2" ="#F58B1F", "cl_3" = "#92C73E","cl_4" =  "#EC1E24"))+
+  scale_fill_manual(values = c("CSTIV" = "#468B74" , "CSTI" ="#F58B1F", "CSTIII" = "#92C73E","CSTII" =  "#EC1E24"))+
   stat_compare_means(comparisons=my_comparisons)+
   theme_bw()
 
@@ -756,7 +634,7 @@ plot <- ggplot(x, aes(x = value, y = dysbio)) +
   geom_point(size = 3.5, alpha = 0.9, shape = 21, fill = "#34495E") +
   
   # Add a smooth regression line with confidence interval
-  geom_smooth(method = "lm", se = TRUE, color = "#E74C3C", fill = "#FADBD8", size = 1.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "#E74C3C", fill = "#FADBD8", linewidth = 1.5) +
   
   # Add dynamic annotation for correlation score
   annotate("text", x = max(x$value) * 0.8, y = max(x$dysbio) * 0.9,

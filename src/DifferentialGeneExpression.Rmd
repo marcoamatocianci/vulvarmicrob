@@ -30,12 +30,19 @@ knitr::opts_knit$set(root.dir = script_dir)
 
 ```{r}
 counts <- column_to_rownames(read.xlsx("../local/data/GEP.count.xlsx") ,"Geneid")
-clusters <- read.csv("../results/cluster_col.csv",row.names = 1) %>% dplyr::select(!c(Dominance,samples))
+clusters <- read.csv("../results/cluster_col.csv", row.names = 1) %>%
+  select(!samples) %>%
+  mutate(Dominance = case_when(
+    Dominance == "Lactobacillus crispatus" ~ "CSTI",
+    Dominance == "Lactobacillus iners" ~ "CSTIII",
+    Dominance == "Lactobacillus gasseri" ~ "CSTII",
+    Dominance == "Others" ~ "CSTIV",
 
+  ))
 rownames(clusters) <- gsub("H_","",rownames(clusters))
 counts <- counts %>% dplyr::select(rownames(clusters))
 
-dge <- DGEList(counts = counts, group = clusters$Clusters)
+dge <- DGEList(counts = counts, group = clusters$Dominance)
 
 # keep <- filterByExpr(dge)
 # dge <- dge[keep, ,keep.lib.sizes=FALSE]
@@ -47,8 +54,8 @@ prc <- 0.34
 
 
 # Precompute cluster indices and sample thresholds
-unique_clusters <- unique(clusters$Clusters)
-cluster_indices <- lapply(unique_clusters, function(c) which(clusters$Clusters == c))
+unique_clusters <- unique(clusters$Dominance)
+cluster_indices <- lapply(unique_clusters, function(c) which(clusters$Dominance == c))
 names(cluster_indices) <- unique_clusters
 
 nsamp_list <- sapply(cluster_indices, function(idx) prc * length(idx))
@@ -62,15 +69,15 @@ gene_presence <- sapply(cluster_indices, function(idx) {
 genes <- rownames(counts_norm)[apply(gene_presence, 1, function(x) any(x > nsamp_list))]
 
 counts_filt <- counts[genes,]
-dge <- DGEList(counts = counts_filt, group = clusters$Clusters)
+dge <- DGEList(counts = counts_filt, group = clusters$Dominance)
 
-design <- model.matrix(~0 + clusters$Clusters) 
-colnames(design) <- gsub("clusters\\$Clusters","",colnames(design))
+design <- model.matrix(~0 + clusters$Dominance) 
+colnames(design) <- gsub("clusters\\$Dominance","",colnames(design))
 dge <- estimateDisp(dge)
 dge <- estimateTagwiseDisp(dge)
 fit <- glmQLFit(dge, design)
 
-contrasts <- makeContrasts("1v2"=cl_1-cl_2,"1v3"=cl_1-cl_3,"1v4"=cl_1-cl_4,"2v3"=cl_2-cl_3,"2v4"=cl_2-cl_4,"3v4"=cl_3-cl_4,levels=c("cl_1","cl_2","cl_3","cl_4"))
+contrasts <- makeContrasts("IvII"=CSTI-CSTII,"IvIII"=CSTI-CSTIII,"IvIV"=CSTI-CSTIV,"IIvIII"=CSTII-CSTIII,"IIvIV"=CSTII-CSTIV,"IIIvIV"=CSTIII-CSTIV,levels=c("CSTI","CSTII","CSTIII","CSTIV"))
 
 DEGList <- list()
 DEGs <- list()
@@ -83,9 +90,8 @@ for(i in colnames(contrasts)){
   top <- filter(top$table,PValue < 0.01 & abs(logFC) > 1) 
   DEGs[[i]] <- top
   DEGList[[i]] <- rownames(DEGs[[i]])
-  # GO[[i]]<-enrichGO(gene = DEGList[[i]],OrgDb = "org.Hs.eg.db", universe = rownames(counts_filt),keyType = "SYMBOL",ont = "BP",qvalueCutoff = 0.2,)
-  colstouse <- which(clusters$Clusters %in% paste0("cl_",strsplit(i,split = "v")[[1]][1]))
-  colstouse <- c(colstouse,which(clusters$Clusters %in% paste0("cl_",strsplit(i,split = "v")[[1]][2])))
+  colstouse <- which(clusters$Dominance %in% paste0("CST",strsplit(i,split = "v")[[1]][1]))
+  colstouse <- c(colstouse,which(clusters$Dominance %in% paste0("CST",strsplit(i,split = "v")[[1]][2])))
 if(length(DEGList[[i]]) > 0 && length(colstouse) > 0){
     pheatmap(counts_norm[DEGList[[i]], colstouse],
              scale = "row",
@@ -137,9 +143,9 @@ scores$sample = rownames(scores)
 scores = merge(scores, liviadb,by =0) %>% tibble::column_to_rownames("Row.names")
 
 ## **PCA Plot on PC1 vs PC2**
-  pca_plot <- ggplot(scores, aes(x = PC1, y = PC2, color = Clusters)) +
+  pca_plot <- ggplot(scores, aes(x = PC1, y = PC2, color = Dominance)) +
   geom_point(size = 5, alpha = 0.8) +  theme_minimal(base_size = 14) +
-  scale_color_manual(values = c("cl_1" = "#468B74" , "cl_2" ="#F58B1F", "cl_3" = "#92C73E","cl_4" =  "#EC1E24"))+
+    scale_color_manual(values = c("CSTIV" = "#468B74" , "CSTI" ="#F58B1F", "CSTIII" = "#92C73E","CSTII" =  "#EC1E24"))+
   # labs(
   #   x = paste0("PC1 (", round(var_explained[1] * 100, 2), "% Variance)"),
   #   y = paste0("PC2 (", round(var_explained[2] * 100, 2), "% Variance)")
@@ -152,7 +158,7 @@ scores = merge(scores, liviadb,by =0) %>% tibble::column_to_rownames("Row.names"
     legend.text = element_text(size = 10),
     panel.grid.minor = element_blank()
   )+
-  ggtitle("Clusters") +
+  ggtitle("Dominance") +
   theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14))
 
   
@@ -186,15 +192,15 @@ print(combined_plots)
 
 ```{r}
 library(ggpubr)
-my_comparisons <- list( c("cl_1","cl_2"),c("cl_1","cl_3"),c("cl_1","cl_4"),c("cl_3","cl_2"),c("cl_4","cl_2"),c("cl_3","cl_4"))
-ggplot(scores, aes(x = Clusters, y = `Formation.of.the.Cornified.Envelope` , fill = Clusters)) +
+my_comparisons <- list( c("CSTI","CSTII"),c("CSTI","CSTIII"),c("CSTI","CSTIV"),c("CSTIII","CSTII"),c("CSTIV","CSTII"),c("CSTIII","CSTIV"))
+ggplot(scores, aes(x = Dominance, y = `Formation.of.the.Cornified.Envelope` , fill = Dominance)) +
   geom_boxplot()+
   geom_point(alpha=0.3)+
   theme_minimal() +
-  scale_fill_manual(values = c("cl_1" = "#468B74" , "cl_2" ="#F58B1F", "cl_3" = "#92C73E","cl_4" =  "#EC1E24"))+
+  scale_fill_manual(values = c("CSTIV" = "#468B74" , "CSTI" ="#F58B1F", "CSTIII" = "#92C73E","CSTII" =  "#EC1E24"))+
   stat_compare_means(comparison=my_comparisons)+
-  labs(title = "Keratinization by Clusters",
-       x = "Clusters",
+  labs(title = "Keratinization by CSTs",
+       x = "CSTs",
        y = "Keratinization Score") +
   theme(legend.position = "none")
 
@@ -313,7 +319,6 @@ for(i in colnames(contrasts)){
   top <- dplyr::filter(top$table, FDR < 0.05 & abs(logFC) > 1) 
   DEGs[[i]] <- top
   DEGList[[i]] <- rownames(DEGs[[i]])
-  # GO[[i]]<-enrichGO(gene = DEGList[[i]],OrgDb = "org.Hs.eg.db", universe = rownames(counts_filt),keyType = "SYMBOL",ont = "BP",qvalueCutoff = 0.2,)
   colstouse <- which(clusters_new$group %in% strsplit(i,split = "-")[[1]][1])
   colstouse <- c(colstouse,which(clusters_new$group %in% strsplit(i,split = "-")[[1]][2]))
 if(length(DEGList[[i]]) > 0 && length(colstouse) > 0){
@@ -333,7 +338,6 @@ if(length(DEGList[[i]]) > 0 && length(colstouse) > 0){
   data <- counts_norm[DEGList[[i]], colstouse]
   colnames(data)<-paste0(colnames(data),clusters_new[colnames(data),])
   
-    # write.xlsx(data,file=paste0("/home/marco/Scrivania/MicrobiomaXPaper-20240903T092735Z-001/MicrobiomaXPaper/DGE/",i,".xlsx"), row.names = T)
   
   }
   else {
