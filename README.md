@@ -34,25 +34,10 @@ Evaluate the concordance and differences between DNA (metagenomics) and RNA sequ
 
 - Data Loading & Preprocessing: Loads RNA (TSS normalized, decontaminated) and DNA (Kraken/Bracken relative abundances, human reads removed, negative control subtracted) data. 
 - Merges datasets based on common samples.
-- Taxonomic & Community Structure Comparison:
-
-        Visualizes relative abundance differences (species/genus levels, focused Lactobacillus) using stacked bar plots.
-
-        Calculates Bray-Curtis dissimilarity on combined profiles.
-
-        Visualizes sample relationships and data type separation using Heatmaps, Dendrograms, and Principal Coordinates Analysis (PCoA).
-
-    Diversity Analysis:
-
-        Calculates and compares Shannon alpha diversity after rarefying non-dominant taxa counts.
-
-    Activity vs. Presence:
-
-        Calculates Log2 Fold Change (RNA abundance / DNA abundance) per microbe.
-
-        Visualizes LogFC against RNA abundance to identify highly active vs. highly present taxa.
-
-    Information Gain: Quantifies the predictive information DNA abundance provides about RNA abundance using discretized data and information theory metrics.
+- Taxonomic Comparison:
+    - Visualizes relative abundance differences (species/genus levels, focused Lactobacillus) using stacked bar plots.
+    - Visualizes sample relationships and data type separation using Heatmaps, Dendrograms, and Principal Coordinates Analysis (PCoA).
+    - Information Gain: Quantifies the predictive information DNA abundance provides about RNA abundance using discretized data and information theory metrics.
     
 Evaluates RNA-seq against shotgun metagenomics for:
 - Taxonomic concordance
