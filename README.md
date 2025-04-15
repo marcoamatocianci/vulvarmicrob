@@ -21,7 +21,8 @@ Decontamination and Filtering of Abundance Data
 
 **Input:** 
 - `bracken_merged_abbundances.num.txt` Raw abundances from Kraken2/Braken pipeline
-  
+- `metadata.xlsx` Metadata
+
 **Results:**
  - `countsToT_decont.txt` - Abundances decontaminated
  - `countsToT_decont_normtss.txt` Abundances decontaminated and normalized (TSS)
@@ -39,10 +40,10 @@ Evaluate the concordance and differences between DNA (metagenomics) and RNA sequ
     - Visualizes sample relationships and data type separation using Heatmaps, Dendrograms, and Principal Coordinates Analysis (PCoA).
     - Information Gain: Quantifies the predictive information DNA abundance provides about RNA abundance using discretized data and information theory metrics.
     
-Evaluates RNA-seq against shotgun metagenomics for:
-- Taxonomic concordance
-- Sensitivity analysis for low-abundance taxa
-- Correlation of diversity metrics between platforms
+**Input:** 
+- `countsToT_decont_normtss.txt` Abundances decontaminated and normalized (TSS)
+- `bracken_merged_abbundances_dna.num.txt` Dna Raw Abundances from Kraken2/Braken pipeline
+- `metadata.xlsx` Metadata
 
 ## Analysis 2: Vulvar Microbiome Characterization
 **Code:** `MainAnalysis.Rmd`  
