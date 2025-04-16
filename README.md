@@ -117,7 +117,8 @@ Processes microbiome data to characterize community structure, identify communit
 ---
 
 ## Analysis 3: Cross Studies 
-Integrates microbiome data from different body sites (vulvar, vaginal, anal) and potentially different studies/batches. Corrects for batch effects using ComBat and compares community structure, composition, diversity, and dysbiosis potential across sites.
+Integrates microbiome data from different body sites (vulvar, vaginal, anal) and different studies/batches. 
+Corrects for batch effects using ComBat and compares community structure and composition.
 
 Code:`ComparativeOtherStudy.Rmd` 
 
@@ -142,3 +143,10 @@ Code:`ComparativeOtherStudy.Rmd`
   - `../results/countsToT_decont.txt` Pre-processed (e.g., decontaminated) count data for a second set of samples (potentially from Analysis 2).
   - `../local/data/Vulvodinia_Samples.xlsx` Spreadsheet with sample information (loaded but not explicitly used in the main analysis steps shown).
   - `../local/data/MicroPhenoDBAssociationScores.csv` External database file linking microbes to phenotype/disease association scores.
+
+---
+
+
+## Analysis 4: Host Differential Gene Expression
+
+
