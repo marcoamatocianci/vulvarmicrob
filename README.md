@@ -131,9 +131,7 @@ Code:`ComparativeOtherStudy.Rmd`
      
 <img src="https://github.com/user-attachments/assets/4884853b-c514-4019-a1e2-060002993905" width="300" height="230">
 
-Alpha Diversity Analysis (Combined Data)
-     
-Dysbiosis Score Assessment (Combined Data)
+- Alpha Diversity Analysis & Dysbiosis Score Assessment
 
 **Input:**
 
