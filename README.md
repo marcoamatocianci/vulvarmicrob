@@ -115,4 +115,42 @@ Processes microbiome data to characterize community structure, identify communit
 ---
 
 ## Analysis 3: Cross Studies 
+Integrates microbiome data from different body sites (vulvar, vaginal, anal) and potentially different studies/batches. Corrects for batch effects using ComBat and compares community structure, composition, diversity, and dysbiosis potential across sites.
 
+Code:`ComparativeOtherStudy.Rmd` 
+
+Data Loading & Preprocessing:
+        Loads taxonomic abundance data (Kraken output for PRJEB61325) and relevant metadata.
+        Filters human reads, adds pseudocounts (+1), and filters low-abundance taxa based on read counts across samples.
+        Loads a second, previously processed count dataset (countsToT_decont.txt).
+        Merges the count datasets, removing specific control/unwanted samples, into a final combined count matrix (final).
+ Normalization & Initial Ordination:
+        Performs Total Sum Scaling (TSS) normalization on the combined count matrix (final_frac).
+        Performs Non-Metric Multidimensional Scaling (NMDS) on TSS data (Bray-Curtis distance) before batch correction and visualizes selected samples, colored by site and shaped by batch.
+Batch Effect Correction & Visualization:
+        Applies the ComBat function (sva package) to the TSS data (final_frac) to adjust for batch effects defined in the metadata.
+        Performs NMDS on the batch-corrected abundance data (combdata).
+![NMDSDifferentSites(2)](https://github.com/user-attachments/assets/75c8cfe5-1c4d-4897-b3ac-8636dd78fea6)
+
+        Visualizes the batch-corrected NMDS results using ggplot, coloring/shaping points by site and batch. Includes a version with confidence ellipses and marginal density plots (ggMarginal) to highlight site groupings.
+- Compositional Comparison (Top Taxa):
+   - Euler diagram visualizing the overlap of the Top 100 abundant taxa sets between the vaginal, anal, and vulvar sites.
+![VennDiagram(2)](https://github.com/user-attachments/assets/4884853b-c514-4019-a1e2-060002993905)
+
+Alpha Diversity Analysis (Combined Data):
+        Rarefies the original combined count data (final) to the minimum library size using vegan::rrarefy.
+        Calculates the Shannon diversity index (vegan::diversity) for each rarefied sample.
+        Generates a dot plot visualizing Shannon diversity across all samples (point size/color represents diversity value).
+Dysbiosis Score Assessment (Combined Data):
+        Loads external microbe-phenotype association scores (MicroPhenoDBAssociationScores.csv).
+        Merges association scores with the TSS-normalized combined data (final_frac).
+        Calculates a sample-specific dysbiosis score by summing the relative abundances of microbes weighted by their association scores.
+        Generates a dot plot visualizing the calculated dysbiosis scores across all samples (point size/color represents score).
+
+Input:
+
+    ../local/data/df_metadataPRJEB61325.txt: Metadata file for samples, must contain site and batch information.
+    ../local/data/bracken_merged_abbundances.num_PRJEB61325.txt: Raw taxonomic abundance counts (Kraken/Bracken output) for PRJEB61325 samples.
+    ../results/countsToT_decont.txt: Pre-processed (e.g., decontaminated) count data for a second set of samples (potentially from Analysis 2).
+    ../local/data/Vulvodinia_Samples.xlsx: Spreadsheet with sample information (loaded but not explicitly used in the main analysis steps shown).
+    ../local/data/MicroPhenoDBAssociationScores.csv: External database file linking microbes to phenotype/disease association scores.
