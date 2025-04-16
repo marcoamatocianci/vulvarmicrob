@@ -49,7 +49,7 @@ Evaluate the concordance and differences between DNA (metagenomics) and RNA sequ
 - `metadata.xlsx` Metadata
 
 ## Analysis 2: Vulvar Microbiome Characterization
-**Code:** `MainAnalysis.Rmd`  
+**Code:** `VulvarCharacterization.Rmd`  
 Processes RNA-seq data to:
 - Import taxonomic abundances from Kraken/Bracken
 - Perform **class discovery** through:
