@@ -1,18 +1,10 @@
 # Vulvar Microbiome Analysis Pipeline
 This repository contains computational workflows for analyzing vulvar microbiome data through RNA sequencing and metagenomic approaches, as described in our publication. The analysis is structured into two primary components: microbiome characterization and methodological comparison.
 
-## Repository Structure
-```
-project/
-├── local/
-│ ├── data/
-├── results/
-├── scripts/
-│ ├── MainAnalysis.Rmd
-│ └── ComparativeDNA-RNA.Rmd
-└── README.md
-```
 <img src="https://github.com/user-attachments/assets/01ca6b41-6e4a-446d-84f4-dc33419d6ad0" width="600" height="500">
+
+---
+
 
 ## Analysis 0: Decontamination and Filtering
 Decontamination and Filtering of Abundance Data 
@@ -27,11 +19,19 @@ Decontamination and Filtering of Abundance Data
  - `countsToT_decont.txt` - Abundances decontaminated
  - `countsToT_decont_normtss.txt` Abundances decontaminated and normalized (TSS)
  - `counts_decont_filtered.txt` Abundances decontaminated and filtered ( 0.1% relative abudance in at least 1 sample )
-  
+   
+--- 
+
 ## Analysis 1: Methodological Comparison (RNA - DNA)
 Evaluate the concordance and differences between DNA (metagenomics) and RNA sequencing approaches for the same set of samples.
 
 **Code:** `ComparisonDNA-RNA.Rmd`  
+**Input:** 
+- `countsToT_decont_normtss.txt` Abundances decontaminated and normalized (TSS)
+- `bracken_merged_abbundances_dna.num.txt` Dna Raw Abundances from Kraken2/Braken pipeline
+- `metadata.xlsx` Metadata
+
+**Analysis:**
 - Merges datasets based on common samples.
 - Assesses the overall similarity/dissimilarity between DNA and RNA samples based on their abundance profiles.
     - Distance matrix heatmap.
@@ -39,26 +39,80 @@ Evaluate the concordance and differences between DNA (metagenomics) and RNA sequ
     - PCoA to plots the samples in a 2D space (based on Bray-Curtis). The plot helps visualize how samples cluster based on type (DNA/RNA) and individual ID.
 - Shannon diversity for each sample
     - Boxplot and paired t-test between the two techniques.
+
+<img src="https://github.com/user-attachments/assets/927d9632-9877-4604-846f-b2faa053f9cf" width="300" height="200">
+
+
+
 - Taxonomic Comparison
     - Visualizes relative abundance differences using stacked bar plots.
 - Information Gain : By discretizing abundances and calculating entropies, it determines the average Information Gain, indicating how much knowing the DNA abundance reduces uncertainty about the RNA abundance across the dataset.
 
-**Input:** 
-- `countsToT_decont_normtss.txt` Abundances decontaminated and normalized (TSS)
-- `bracken_merged_abbundances_dna.num.txt` Dna Raw Abundances from Kraken2/Braken pipeline
-- `metadata.xlsx` Metadata
+--- 
 
 ## Analysis 2: Vulvar Microbiome Characterization
+Processes microbiome data to characterize community structure, identify community types (CSTs), assess diversity and dysbiosis, and perform differential abundance analysis between identified community types.
 **Code:** `VulvarCharacterization.Rmd`  
-Processes RNA-seq data to:
-- Import taxonomic abundances from Kraken/Bracken
-- Perform **class discovery** through:
-  - CST identification
-  - Hierarchical Clustering 
-- Calculate alpha diversity metrics:
-  - Shannon Index
-- Assess dysbiosis using
-- Differential abundance testing
+**Input:**
+-  `../results/counts_decont_filtered.txt`   Abundances decontaminated and filtered ( 0.1% relative abudance in at least 1 sample )
+-  `../local/data/MicroPhenoDBAssociationScores.csv` External database file containing scores linking microbes to Bacterial Vaginosis.
+  
+**Analysis:**
+- Normalization: Total Sum Scaling (TSS) normalization on input count data.
+  
+- Visualization of community structure in samples:
+    - Principal Component Analysis (PCA) on scaled TSS data and plots PC1 vs PC2.
+    - Non-Metric Multidimensional Scaling (NMDS) using Bray-Curtis distance on TSS data and plots NMDS1 vs NMDS2.
+      
+- Clustering & Community Typing (CST Identification):
+    - Bray-Curtis distance matrix.
+    - Hierarchical Clustering (Euclidean distance, ward.D2).
+    - Dominant species identification in each sample as a proxy for Community State Types (CSTs).
+    - Stacked bar plot showing dominant species/CST composition across samples.  ( <img src="https://github.com/user-attachments/assets/013ffe81-eb08-4ad4-a548-d711fe882b95" width="90" height="30"> )
+
+ - **Heatmap of row-scaled TSS data**, annotated by cluster and CSTs.
+   
+       - Differential Abundance Testing (Between Clusters):
+          Normalizes counts using edgeR TMM method and calculates logCPM.
+          Performs Wilcoxon rank-sum tests comparing taxon abundance (logCPM) between each cluster and all others.
+          Identifies Differentially Abundant Microorganisms (DAMs) based on FDR and median change thresholds.
+          Generates a heatmap visualizing only the significant DAMs.
+      
+       - Cluster Composition Visualization:
+          Calculates the average taxonomic composition for each dominant species group (CST).
+          Generates pie charts visualizing the average composition for each identified CST.
+
+- Alpha Diversity Analysis:
+    - Rarefies count data to the minimum library size.
+    - Shannon diversity index calculation.
+       - Box plot comparing Shannon diversity between CSTs, including statistical comparisons.
+       - Dot plot visualizing Shannon diversity per sample.
+ 
+
+<img src="https://github.com/user-attachments/assets/e4afc8f8-c618-474a-b771-92726ea1bc0d" width="900" height="70">
+
+
+
+- Dysbiosis Score Assessment:
+    - Loading of external microbe-phenotype association scores.
+    - Sample-specific dysbiosis score calculation based on weighted microbial abundances.
+       - Dot plot visualizing dysbiosis scores per sample.
+
+<img src="https://github.com/user-attachments/assets/117bffec-cc94-4566-aa79-f71f82e4b6ad" width="900" height="60">
+
+          Genus-Level Analysis
+
+              Aggregates TSS data to the genus level.
+              Filters for abundant genera.
+              Visualizes genus correlations with a heatmap.
+              Generates genus-level stacked bar plots and bubble plots.
+              Creates faceted box plots comparing genus abundances across CSTs.
+
+- Correlation Analysis:
+    - Calculates and visualizes the correlation between Shannon diversity and the dysbiosis score using a scatter plot.
+
+
+---
 
 ## Analysis 3: Cross Studies 
 
