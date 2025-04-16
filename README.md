@@ -100,13 +100,14 @@ Processes microbiome data to characterize community structure, identify communit
 
 <img src="https://github.com/user-attachments/assets/117bffec-cc94-4566-aa79-f71f82e4b6ad" width="900" height="60">
 
-          Genus-Level Analysis
+- Genus-Level Analysis
+   - Aggregates TSS data to the genus level.
+   - Filters for 5% most abundant genera.
+   - Generates genus-level stacked bar plots and bubble plots.
+  
+<img src="https://github.com/user-attachments/assets/33a1ce86-3b1b-44ee-b582-c9fd6a7ad899" width="500" height="300">
 
-              Aggregates TSS data to the genus level.
-              Filters for abundant genera.
-              Visualizes genus correlations with a heatmap.
-              Generates genus-level stacked bar plots and bubble plots.
-              Creates faceted box plots comparing genus abundances across CSTs.
+  Creates faceted box plots comparing genus abundances across CSTs.
 
 - Correlation Analysis:
     - Calculates and visualizes the correlation between Shannon diversity and the dysbiosis score using a scatter plot.
@@ -124,12 +125,12 @@ Code:`ComparativeOtherStudy.Rmd`
 - Batch Effect Correction using ComBat function (sva package) to the TSS data to adjust for batch effects defined in the metadata.        
 - Performs NMDS on the batch-corrected abundance data (combdata).
         
-<img src="https://github.com/user-attachments/assets/75c8cfe5-1c4d-4897-b3ac-8636dd78fea6" width="500" height="400">
+<img src="https://github.com/user-attachments/assets/75c8cfe5-1c4d-4897-b3ac-8636dd78fea6" width="500" height="350">
 
 - Compositional Comparison (Top Taxa):
    - Euler diagram visualizing the overlap of the Top 100 abundant taxa sets between the vaginal, anal, and vulvar sites.
      
-<img src="https://github.com/user-attachments/assets/4884853b-c514-4019-a1e2-060002993905" width="300" height="230">
+   <img src="https://github.com/user-attachments/assets/4884853b-c514-4019-a1e2-060002993905" width="300" height="230">
 
 - Alpha Diversity Analysis & Dysbiosis Score Assessment
 
