@@ -37,6 +37,7 @@ Evaluate the concordance and differences between DNA (metagenomics) and RNA sequ
     - Distance matrix heatmap.
     - Dendrogram.
     - PCoA to plots the samples in a 2D space (based on Bray-Curtis). The plot helps visualize how samples cluster based on type (DNA/RNA) and individual ID.
+      
 - Shannon diversity for each sample
     - Boxplot and paired t-test between the two techniques.
 
