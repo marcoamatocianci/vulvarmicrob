@@ -53,6 +53,7 @@ Evaluate the concordance and differences between DNA (metagenomics) and RNA sequ
 
 ## Analysis 2: Vulvar Microbiome Characterization
 Processes microbiome data to characterize community structure, identify community types (CSTs), assess diversity and dysbiosis, and perform differential abundance analysis between identified community types.
+
 **Code:** `VulvarCharacterization.Rmd`  
 **Input:**
 -  `../results/counts_decont_filtered.txt`   Abundances decontaminated and filtered ( 0.1% relative abudance in at least 1 sample )
