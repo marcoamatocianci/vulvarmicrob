@@ -89,7 +89,6 @@ Processes microbiome data to characterize community structure, identify communit
        - Box plot comparing Shannon diversity between CSTs, including statistical comparisons.
        - Dot plot visualizing Shannon diversity per sample.
  
-
 <img src="https://github.com/user-attachments/assets/e4afc8f8-c618-474a-b771-92726ea1bc0d" width="900" height="70">
 
 
