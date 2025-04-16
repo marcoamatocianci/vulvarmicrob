@@ -137,8 +137,8 @@ Dysbiosis Score Assessment (Combined Data)
 
 **Input:**
 
-   `../local/data/df_metadataPRJEB61325.txt` Metadata file for samples, must contain site and batch information.
-   `../local/data/bracken_merged_abbundances.num_PRJEB61325.txt` Raw taxonomic abundance counts (Kraken/Bracken output) for PRJEB61325 samples.
-   `../results/countsToT_decont.txt` Pre-processed (e.g., decontaminated) count data for a second set of samples (potentially from Analysis 2).
-   `../local/data/Vulvodinia_Samples.xlsx` Spreadsheet with sample information (loaded but not explicitly used in the main analysis steps shown).
-   `../local/data/MicroPhenoDBAssociationScores.csv` External database file linking microbes to phenotype/disease association scores.
+  - `../local/data/df_metadataPRJEB61325.txt` Metadata file for samples, must contain site and batch information.
+  - `../local/data/bracken_merged_abbundances.num_PRJEB61325.txt` Raw taxonomic abundance counts (Kraken/Bracken output) for PRJEB61325 samples.
+  - `../results/countsToT_decont.txt` Pre-processed (e.g., decontaminated) count data for a second set of samples (potentially from Analysis 2).
+  - `../local/data/Vulvodinia_Samples.xlsx` Spreadsheet with sample information (loaded but not explicitly used in the main analysis steps shown).
+  - `../local/data/MicroPhenoDBAssociationScores.csv` External database file linking microbes to phenotype/disease association scores.
