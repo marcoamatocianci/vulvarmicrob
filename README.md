@@ -32,14 +32,17 @@ Decontamination and Filtering of Abundance Data
 Evaluate the concordance and differences between DNA (metagenomics) and RNA sequencing approaches for the same set of samples.
 
 **Code:** `ComparisonDNA-RNA.Rmd`  
-
-- Data Loading & Preprocessing: Loads RNA (TSS normalized, decontaminated) and DNA (Kraken/Bracken relative abundances, human reads removed, negative control subtracted) data. 
 - Merges datasets based on common samples.
-- Taxonomic Comparison:
-    - Visualizes relative abundance differences (species/genus levels, focused Lactobacillus) using stacked bar plots.
-    - Visualizes sample relationships and data type separation using Heatmaps, Dendrograms, and Principal Coordinates Analysis (PCoA).
-    - Information Gain: Quantifies the predictive information DNA abundance provides about RNA abundance using discretized data and information theory metrics.
-    
+- Assesses the overall similarity/dissimilarity between DNA and RNA samples based on their abundance profiles.
+    - Distance matrix heatmap.
+    - Dendrogram.
+    - PCoA to plots the samples in a 2D space (based on Bray-Curtis). The plot helps visualize how samples cluster based on type (DNA/RNA) and individual ID.
+- Shannon diversity for each sample
+    - Boxplot and paired t-test between the two techniques.
+- Taxonomic Comparison
+    - Visualizes relative abundance differences using stacked bar plots.
+- Information Gain : By discretizing abundances and calculating entropies, it determines the average Information Gain, indicating how much knowing the DNA abundance reduces uncertainty about the RNA abundance across the dataset.
+
 **Input:** 
 - `countsToT_decont_normtss.txt` Abundances decontaminated and normalized (TSS)
 - `bracken_merged_abbundances_dna.num.txt` Dna Raw Abundances from Kraken2/Braken pipeline
