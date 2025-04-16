@@ -129,13 +129,15 @@ Data Loading & Preprocessing:
         Performs Non-Metric Multidimensional Scaling (NMDS) on TSS data (Bray-Curtis distance) before batch correction and visualizes selected samples, colored by site and shaped by batch.
 Batch Effect Correction & Visualization:
         Applies the ComBat function (sva package) to the TSS data (final_frac) to adjust for batch effects defined in the metadata.
-        Performs NMDS on the batch-corrected abundance data (combdata).
-![NMDSDifferentSites(2)](https://github.com/user-attachments/assets/75c8cfe5-1c4d-4897-b3ac-8636dd78fea6)
+        
+   - Performs NMDS on the batch-corrected abundance data (combdata).
+        
+<img src="https://github.com/user-attachments/assets/75c8cfe5-1c4d-4897-b3ac-8636dd78fea6" width="500" height="400">
 
-        Visualizes the batch-corrected NMDS results using ggplot, coloring/shaping points by site and batch. Includes a version with confidence ellipses and marginal density plots (ggMarginal) to highlight site groupings.
 - Compositional Comparison (Top Taxa):
    - Euler diagram visualizing the overlap of the Top 100 abundant taxa sets between the vaginal, anal, and vulvar sites.
-![VennDiagram(2)](https://github.com/user-attachments/assets/4884853b-c514-4019-a1e2-060002993905)
+     
+<img src="https://github.com/user-attachments/assets/4884853b-c514-4019-a1e2-060002993905" width="300" height="230">
 
 Alpha Diversity Analysis (Combined Data):
         Rarefies the original combined count data (final) to the minimum library size using vegan::rrarefy.
