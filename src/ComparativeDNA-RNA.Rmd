@@ -24,6 +24,9 @@ suppressMessages(library(viridis))
 suppressMessages(library(ape))
 suppressMessages(library(plotly))
 suppressMessages(library(infotheo))
+suppressMessages(library(svglite)) 
+library(tidyverse)
+library(ggpubr)
 ```
 
 ```{r echo=FALSE, warning=FALSE}
@@ -91,14 +94,14 @@ b <- a[,grep(".dna|.rna",colnames(a))]
 b[is.na(b)] <- 0
 beta_rna <- vegdist(t(b), method = "bray")
 betamtx<-as.matrix(beta_rna)
-pheatmap(betamtx, 
+p <- pheatmap(betamtx, 
          # color = viridis,
          clustering_distance_rows = beta_rna,
          clustering_distance_cols = beta_rna)
+ggsave(filename = paste0("../results/images/ComparisonDNARNA/DistanceMatrix.svg"), plot = p, width = 8, height = 6, device = svglite)
+
 
 hc <- hclust(beta_rna)
-clusters <- cutree(hc, k = 6)
-
 ### Dendrogramma ###
 dend <- as.dendrogram(hc)
 plot(dend, ylab = "Height")
@@ -118,11 +121,11 @@ pcoa_result <- pcoa(jaccard_dist, correction = "cailliez")
 score <- data.frame(pcoa_result$vectors[, 1:3])  
 score$Samples <- rownames(b_transposed)          
 score$trt <- factor(c(rep("rna",nrow(score)/2),rep("dna",nrow(score)/2)),levels=c("rna","dna"))
-
-ggplot() +
-  geom_point(data = score, aes(x = Axis.1, y = Axis.2, shape = trt, fill = trt), 
+score$ID <- sapply(strsplit(score$Samples,"\\."),"[",1)
+p <- ggplot() +
+  geom_point(data = score, aes(x = Axis.1, y = Axis.2, shape = trt, fill = ID ), 
              size = 5, stroke = 0.5, color = "black", alpha = 0.9) +  
-  scale_fill_manual(values = c("#66c2a5", "#fc8d62")) +  
+  # scale_fill_manual(values = c("#66c2a5", "#fc8d62")) +  
   scale_shape_manual(values = c(21, 24)) +  
   labs(title = "PCoA Plot of Treatment Groups",
        x = "PCoA1", 
@@ -134,6 +137,7 @@ ggplot() +
 theme(legend.position = "right",
       panel.grid = element_blank(),
       plot.title = element_text(hjust = 0.5)) 
+ggsave(filename = paste0("../results/images/ComparisonDNARNA/PCoA.svg"), plot = p, width = 8, height = 6, device = svglite)
 
 ```
 
@@ -160,21 +164,41 @@ alpha_subs<-diversity(kdata_subs)#t(kdata[,match(ordered_samples,colnames(kdata)
 alphasubs=data.frame(samples=names(alpha_subs),value=alpha_subs)
 alphasubs$samples<-factor(alphasubs$samples)
 
+alphasubs_paired <- alphasubs %>%
+  mutate(sample_type = case_when(
+    str_ends(samples, "\\.dna") ~ "DNA", 
+    str_ends(samples, "\\.rna") ~ "RNA",
+    TRUE ~ "Other"
+  )) %>%
+  mutate(pair_id = str_remove(samples, "\\.(dna|rna)$")) %>%
+  mutate(sample_type = factor(sample_type, levels = c("DNA", "RNA")))
 
-ggplot(alphasubs, aes(x = samples, y = factor(1), size = value, colour = value)) +
-  geom_point() +
-  scale_size_continuous(range = c(5, 15)) +
-  scale_color_gradient(low = "grey90", high = "#D94943") +  # Intensity of color
-  theme_bw() +
-  theme(
-    axis.title.y = element_blank(),
-    axis.text.y = element_blank(),
-    axis.ticks.y = element_blank(),
-    panel.grid = element_blank(),
-    legend.position = "none"  # Hide the legend
-  )+
-  coord_fixed(ratio = 2)
+p_paired <- ggpaired(alphasubs_paired, 
+                     x = "sample_type",      
+                     y = "value",            
+                     id = "pair_id",          
+                     color = "sample_type",   
+                     palette = c("#5daad8","#c56bba"),         
+                     line.color = "gray",     
+                     line.size = 0.4,         
+                     point.size = 2,          
+                     short.panel.labs = T, 
+                     xlab = "Technique (DNA or RNA)",
+                     ylab = "Shannon Diversity",
+                     legend = "top",           
+                     bxp.errorbar = T,      
+                     order = c("DNA", "RNA")) + 
+  stat_compare_means(
+    method = "t.test",
+    paired = TRUE,       # !!! Crucial: Specify that it's a PAIRED t-test !!!
+    label.x.npc = 0.5  ,          
+    label = "p.signif" 
+    # label = "p.format"   
+  ) +
+  ggtitle("Paired Comparison of Alpha Diversity (DNA vs RNA)")
+ggsave(filename = paste0("../results/images/ComparisonDNARNA/AlphaDiversityBoxplot.svg"), plot = p_paired, width = 8, height = 6, device = svglite)
 ```
+
 ```{r}
 common_columns <- intersect(colnames(df_rna_frac), colnames(df_dna_frac))
 df_rna_frac[,common_columns]
@@ -192,20 +216,19 @@ bac<-rowSums(apply(merged,2,FUN = function(x) x>=prc))>=1
 merged_filt<-merged[bac,]
 merged_filt[paste0("Less than ",prc*100,"%"),]<-1-colSums(merged_filt)
 merged_filt$Species <- rownames(merged_filt)
-# merged_filt$Species <- factor(merged_filt$Species ,levels = c("Gardnerella swidsinskii", "Gardnerella vaginalis", "Lactobacillus crispatus", "Lactobacillus iners"  ,"Lactobacillus jensenii","Prevotella bivia", "Less than 5%"))
 #### Plot Abbondanze ####
 data_long_gen <- merged_filt %>%
   pivot_longer(
-    cols = starts_with("H_"),   # Specify the columns to pivot
-    names_to = "Category",       # Name of the new column for the original column names
-    values_to = "Value"          # Name of the new column for the values
+    cols = starts_with("H_"), 
+    names_to = "Category",    
+    values_to = "Value"       
   ) 
 
 library(forcats)
 
 # Assicurati che "Others" sia l'ultimo livello del fattore Species
     data_long_gen$Species <- fct_relevel(data_long_gen$Species, c(paste0("Less than ",prc*100,"%")), after = Inf)
-        data_long_gen$Species <- fct_relevel(data_long_gen$Species, c( "Gardnerella swidsinskii"), after = 3)
+    data_long_gen$Species <- fct_relevel(data_long_gen$Species, c( "Gardnerella swidsinskii"), after = 3)
     data_long_gen$Species <- fct_relevel(data_long_gen$Species, c("Gardnerella vaginalis"), after = 4)
     data_long_gen$Species <- fct_relevel(data_long_gen$Species, c("Prevotella bivia"), after = 5)
 
@@ -213,58 +236,13 @@ library(forcats)
     data_long_gen$Species <- fct_relevel(data_long_gen$Species, c("Lactobacillus iners"), after = 1)
     data_long_gen$Species <- fct_relevel(data_long_gen$Species, c("Lactobacillus jensenii"), after = 2)
 
-ggplot(data_long_gen, aes(y = Value, x = Category, fill = Species,)) +
+p <- ggplot(data_long_gen, aes(y = Value, x = Category, fill = Species,)) +
   geom_col(color="black") +
- scale_fill_manual(values =c("#F58B1F", "#92C73E", "#35459B" ,"#bf63a3", "#e8a2c0","#ffd761","#468B74","grey"))+# Aggiungi le etichette sopra le barre
-  theme_minimal()  # Usa un tema semplice
+ scale_fill_manual(values =c("#F58B1F", "#92C73E", "#35459B" ,"#bf63a3", "#e8a2c0","#ffd761","#468B74","grey"))+
+  theme_minimal() 
 
+ ggsave(filename = paste0("../results/images/ComparisonDNARNA/StackedBarPlot.svg"), plot = p, width = 8, height = 6, device = svglite)
 
-```
-
-```{r}
-genus_frac<-merged
-genus_frac$genus<-sapply(strsplit(rownames(genus_frac)," "),"[",1) 
-genus_frac<-genus_frac %>%
-  group_by(genus) %>%
-  summarise(across(everything(), sum, na.rm = TRUE)
-  )%>% tibble::column_to_rownames("genus")
-
-genus_frac$sum <- rowSums(genus_frac)
-genus_frac<-arrange(genus_frac,desc(sum))
-genus_frac$sum<-NULL
-genus_frac$Species<-NULL
-
-prc<-0.03
-bac<-rowSums(apply(genus_frac,2,FUN = function(x) x>=prc))>=1
-genus_frac_filt<-genus_frac[bac,]
-genus_frac_filt[paste0("Less than ",prc*100,"%"),]<-1-colSums(genus_frac_filt)
-genus_frac_filt$Species <- rownames(genus_frac_filt)
-# merged_filt$Species <- factor(merged_filt$Species ,levels = c("Gardnerella swidsinskii", "Gardnerella vaginalis", "Lactobacillus crispatus", "Lactobacillus iners"  ,"Lactobacillus jensenii","Prevotella bivia", "Less than 5%"))
-#### Plot Abbondanze ####
-data_long_gen <- genus_frac_filt %>%
-  pivot_longer(
-    cols = starts_with("H_"),   # Specify the columns to pivot
-    names_to = "Category",       # Name of the new column for the original column names
-    values_to = "Value"          # Name of the new column for the values
-  ) 
-
-
-library(forcats)
-
-# Assicurati che "Others" sia l'ultimo livello del fattore Species
-    data_long_gen$Species <- fct_relevel(data_long_gen$Species, c(paste0("Less than ",prc*100,"%")), after = Inf)
-        data_long_gen$Species <- fct_relevel(data_long_gen$Species, c( "Gardnerella swidsinskii"), after = 3)
-    data_long_gen$Species <- fct_relevel(data_long_gen$Species, c("Gardnerella vaginalis"), after = 4)
-    data_long_gen$Species <- fct_relevel(data_long_gen$Species, c("Prevotella bivia"), after = 5)
-
-    data_long_gen$Species <- fct_relevel(data_long_gen$Species, c("Lactobacillus crispatus"), after = 0)
-    data_long_gen$Species <- fct_relevel(data_long_gen$Species, c("Lactobacillus iners"), after = 1)
-    data_long_gen$Species <- fct_relevel(data_long_gen$Species, c("Lactobacillus jensenii"), after = 2)
-
-ggplot(data_long_gen, aes(y = Value, x = Category, fill = Species,)) +
-  geom_col(color="black") +
- # scale_fill_manual(values =c("#F58B1F", "#92C73E", "#35459B" ,"#bf63a3", "#e8a2c0","#ffd761","#468B74","grey"))+
-  theme_minimal()
 ```
 ```{r}
 #INFORMATION GAIN
@@ -316,12 +294,10 @@ for (microbe in rownames(merged_all)) {
   
   temp_df <- data.frame(
     Microbe = microbe,
-    Sample = colnames(rna_samples), # Sample names (assumes column names identify samples)
+    Sample = colnames(rna_samples),
     LogFoldChange = as.numeric(log_fold_changes),
     RNAExpression = as.numeric(rna_samples)
   )
-  
-  # Combine with the main dataframe
   df <- rbind(df, temp_df)
 }
 

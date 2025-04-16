@@ -256,7 +256,7 @@ p <- pheatmap(kdata_frac,
          
 )
 
-ggsave(filename = paste0("../results/images/MainRNA/MainHeatmap.svg"), plot = p, width = 6, height = 15, device = svglite)
+ggsave(filename = paste0("../results/images/MainRNA/MainHeatmap.svg"), plot = p, width = 15, height = 6, device = svglite)
 
 ```
 
@@ -563,7 +563,6 @@ p=ggplot(data_long_gen,aes(x = Cluster,y=Value,fill = Cluster))+
   theme_minimal()
 ggsave(filename = "../results/images/MainRNA/supp/AbundancesinClusters.svg", plot = p, width = 15, height = 15,device = svglite)
 ```
-
 ```{r}
 
 association <- read.csv("../local/data/MicroPhenoDBAssociationScores.csv") %>% select(-Pmid, -Association_ID)

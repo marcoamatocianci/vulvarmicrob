@@ -1,0 +1,93 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' class='svglite' width='576.00pt' height='432.00pt' viewBox='0 0 576.00 432.00'>
+<defs>
+  <style type='text/css'><![CDATA[
+    .svglite line, .svglite polyline, .svglite polygon, .svglite path, .svglite rect, .svglite circle {
+      fill: none;
+      stroke: #000000;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-miterlimit: 10.00;
+    }
+    .svglite text {
+      white-space: pre;
+    }
+  ]]></style>
+</defs>
+<rect width='100%' height='100%' style='stroke: none; fill: none;'/>
+<defs>
+  <clipPath id='cpMC4wMHw1NzYuMDB8MC4wMHw0MzIuMDA='>
+    <rect x='0.00' y='0.00' width='576.00' height='432.00' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpMC4wMHw1NzYuMDB8MC4wMHw0MzIuMDA=)'>
+</g>
+<defs>
+  <clipPath id='cpNTUuOTB8NDc2LjE5fDI5Ljk3fDM5MS4yMg=='>
+    <rect x='55.90' y='29.97' width='420.29' height='361.25' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpNTUuOTB8NDc2LjE5fDI5Ljk3fDM5MS4yMg==)'>
+<circle cx='89.77' cy='228.78' r='5.69' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #F8766D; fill-opacity: 0.90;' />
+<circle cx='82.64' cy='231.96' r='5.69' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #B79F00; fill-opacity: 0.90;' />
+<circle cx='400.09' cy='46.40' r='5.69' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #00BA38; fill-opacity: 0.90;' />
+<circle cx='235.43' cy='232.24' r='5.69' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #00BFC4; fill-opacity: 0.90;' />
+<circle cx='79.17' cy='236.57' r='5.69' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #619CFF; fill-opacity: 0.90;' />
+<circle cx='452.59' cy='367.12' r='5.69' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #F564E3; fill-opacity: 0.90;' />
+<polygon points='86.91,224.53 94.58,237.80 79.25,237.80 ' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #F8766D; fill-opacity: 0.90;' />
+<polygon points='285.95,243.24 293.62,256.51 278.29,256.51 ' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #00BFC4; fill-opacity: 0.90;' />
+<polygon points='75.00,225.59 82.66,238.86 67.34,238.86 ' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #619CFF; fill-opacity: 0.90;' />
+<polygon points='85.79,221.22 93.45,234.49 78.13,234.49 ' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #B79F00; fill-opacity: 0.90;' />
+<polygon points='457.08,365.95 464.74,379.23 449.42,379.23 ' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #F564E3; fill-opacity: 0.90;' />
+<polygon points='399.05,37.67 406.71,50.94 391.39,50.94 ' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #00BA38; fill-opacity: 0.90;' />
+<line x1='123.30' y1='200.67' x2='90.66' y2='228.04' style='stroke-width: 1.07;' />
+<line x1='88.62' y1='205.88' x2='82.88' y2='230.92' style='stroke-width: 1.07;' />
+<line x1='92.95' y1='231.01' x2='80.30' y2='236.11' style='stroke-width: 1.07;' />
+<line x1='125.38' y1='215.68' x2='88.01' y2='232.87' style='stroke-width: 1.07;' />
+<line x1='89.58' y1='221.03' x2='86.21' y2='229.06' style='stroke-width: 1.07;' />
+<text x='154.34' y='204.07' text-anchor='middle' style='font-size: 11.04px; font-family: "Liberation Sans";' textLength='58.48px' lengthAdjust='spacingAndGlyphs'>H_TT20.rna</text>
+<text x='88.74' y='204.08' text-anchor='middle' style='font-size: 11.04px; font-family: "Liberation Sans";' textLength='58.48px' lengthAdjust='spacingAndGlyphs'>H_TT21.rna</text>
+<text x='410.06' y='41.72' text-anchor='middle' style='font-size: 11.04px; font-family: "Liberation Sans";' textLength='58.48px' lengthAdjust='spacingAndGlyphs'>H_TT23.rna</text>
+<text x='245.46' y='227.54' text-anchor='middle' style='font-size: 11.04px; font-family: "Liberation Sans";' textLength='58.48px' lengthAdjust='spacingAndGlyphs'>H_TT28.rna</text>
+<text x='123.99' y='234.30' text-anchor='middle' style='font-size: 11.04px; font-family: "Liberation Sans";' textLength='58.48px' lengthAdjust='spacingAndGlyphs'>H_TT54.rna</text>
+<text x='442.57' y='362.42' text-anchor='middle' style='font-size: 11.04px; font-family: "Liberation Sans";' textLength='58.48px' lengthAdjust='spacingAndGlyphs'>H_TT55.rna</text>
+<text x='157.53' y='219.25' text-anchor='middle' style='font-size: 11.04px; font-family: "Liberation Sans";' textLength='60.70px' lengthAdjust='spacingAndGlyphs'>H_TT20.dna</text>
+<text x='295.97' y='247.45' text-anchor='middle' style='font-size: 11.04px; font-family: "Liberation Sans";' textLength='60.70px' lengthAdjust='spacingAndGlyphs'>H_TT28.dna</text>
+<text x='89.85' y='249.37' text-anchor='middle' style='font-size: 11.04px; font-family: "Liberation Sans";' textLength='60.70px' lengthAdjust='spacingAndGlyphs'>H_TT54.dna</text>
+<text x='89.85' y='219.23' text-anchor='middle' style='font-size: 11.04px; font-family: "Liberation Sans";' textLength='60.70px' lengthAdjust='spacingAndGlyphs'>H_TT21.dna</text>
+<text x='442.24' y='387.35' text-anchor='middle' style='font-size: 11.04px; font-family: "Liberation Sans";' textLength='60.70px' lengthAdjust='spacingAndGlyphs'>H_TT55.dna</text>
+<text x='388.98' y='59.11' text-anchor='middle' style='font-size: 11.04px; font-family: "Liberation Sans";' textLength='60.70px' lengthAdjust='spacingAndGlyphs'>H_TT23.dna</text>
+</g>
+<g clip-path='url(#cpMC4wMHw1NzYuMDB8MC4wMHw0MzIuMDA=)'>
+<text x='49.62' y='319.22' text-anchor='end' style='font-size: 11.20px;fill: #4D4D4D; font-family: "Liberation Sans";' textLength='25.80px' lengthAdjust='spacingAndGlyphs'>-0.25</text>
+<text x='49.62' y='230.19' text-anchor='end' style='font-size: 11.20px;fill: #4D4D4D; font-family: "Liberation Sans";' textLength='22.20px' lengthAdjust='spacingAndGlyphs'>0.00</text>
+<text x='49.62' y='141.17' text-anchor='end' style='font-size: 11.20px;fill: #4D4D4D; font-family: "Liberation Sans";' textLength='22.20px' lengthAdjust='spacingAndGlyphs'>0.25</text>
+<text x='49.62' y='52.15' text-anchor='end' style='font-size: 11.20px;fill: #4D4D4D; font-family: "Liberation Sans";' textLength='22.20px' lengthAdjust='spacingAndGlyphs'>0.50</text>
+<text x='57.48' y='405.49' text-anchor='middle' style='font-size: 11.20px;fill: #4D4D4D; font-family: "Liberation Sans";' textLength='19.40px' lengthAdjust='spacingAndGlyphs'>-0.4</text>
+<text x='142.47' y='405.49' text-anchor='middle' style='font-size: 11.20px;fill: #4D4D4D; font-family: "Liberation Sans";' textLength='19.40px' lengthAdjust='spacingAndGlyphs'>-0.2</text>
+<text x='227.46' y='405.49' text-anchor='middle' style='font-size: 11.20px;fill: #4D4D4D; font-family: "Liberation Sans";' textLength='15.80px' lengthAdjust='spacingAndGlyphs'>0.0</text>
+<text x='312.45' y='405.49' text-anchor='middle' style='font-size: 11.20px;fill: #4D4D4D; font-family: "Liberation Sans";' textLength='15.80px' lengthAdjust='spacingAndGlyphs'>0.2</text>
+<text x='397.44' y='405.49' text-anchor='middle' style='font-size: 11.20px;fill: #4D4D4D; font-family: "Liberation Sans";' textLength='15.80px' lengthAdjust='spacingAndGlyphs'>0.4</text>
+<text x='266.04' y='421.66' text-anchor='middle' style='font-size: 14.00px; font-family: "Liberation Sans";' textLength='42.74px' lengthAdjust='spacingAndGlyphs'>PCoA1</text>
+<text transform='translate(16.97,210.60) rotate(-90)' text-anchor='middle' style='font-size: 14.00px; font-family: "Liberation Sans";' textLength='42.74px' lengthAdjust='spacingAndGlyphs'>PCoA2</text>
+<text x='497.11' y='118.88' style='font-size: 14.00px; font-family: "Liberation Sans";' textLength='64.94px' lengthAdjust='spacingAndGlyphs'>MetaType</text>
+<circle cx='505.75' cy='136.17' r='5.69' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #000000; fill-opacity: 0.90;' />
+<circle cx='505.75' cy='153.45' r='5.69' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #000000; fill-opacity: 0.90;' />
+<circle cx='505.75' cy='170.73' r='5.69' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #000000; fill-opacity: 0.90;' />
+<circle cx='505.75' cy='188.01' r='5.69' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #000000; fill-opacity: 0.90;' />
+<circle cx='505.75' cy='205.29' r='5.69' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #000000; fill-opacity: 0.90;' />
+<circle cx='505.75' cy='222.57' r='5.69' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90; fill: #000000; fill-opacity: 0.90;' />
+<text x='521.36' y='140.17' style='font-size: 11.20px; font-family: "Liberation Sans";' textLength='38.50px' lengthAdjust='spacingAndGlyphs'>H_TT20</text>
+<text x='521.36' y='157.45' style='font-size: 11.20px; font-family: "Liberation Sans";' textLength='38.50px' lengthAdjust='spacingAndGlyphs'>H_TT21</text>
+<text x='521.36' y='174.73' style='font-size: 11.20px; font-family: "Liberation Sans";' textLength='38.50px' lengthAdjust='spacingAndGlyphs'>H_TT23</text>
+<text x='521.36' y='192.01' style='font-size: 11.20px; font-family: "Liberation Sans";' textLength='38.50px' lengthAdjust='spacingAndGlyphs'>H_TT28</text>
+<text x='521.36' y='209.29' style='font-size: 11.20px; font-family: "Liberation Sans";' textLength='38.50px' lengthAdjust='spacingAndGlyphs'>H_TT54</text>
+<text x='521.36' y='226.57' style='font-size: 11.20px; font-family: "Liberation Sans";' textLength='38.50px' lengthAdjust='spacingAndGlyphs'>H_TT55</text>
+<text x='497.11' y='270.79' style='font-size: 14.00px; font-family: "Liberation Sans";' textLength='64.94px' lengthAdjust='spacingAndGlyphs'>MetaType</text>
+<circle cx='505.75' cy='288.08' r='5.69' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90;' />
+<polygon points='505.75,296.52 513.41,309.79 498.09,309.79 ' style='stroke-width: 0.71; stroke: #000000; stroke-opacity: 0.90;' />
+<text x='521.36' y='292.08' style='font-size: 11.20px; font-family: "Liberation Sans";' textLength='17.81px' lengthAdjust='spacingAndGlyphs'>rna</text>
+<text x='521.36' y='309.36' style='font-size: 11.20px; font-family: "Liberation Sans";' textLength='20.07px' lengthAdjust='spacingAndGlyphs'>dna</text>
+<text x='266.04' y='18.97' text-anchor='middle' style='font-size: 16.80px; font-family: "Liberation Sans";' textLength='246.74px' lengthAdjust='spacingAndGlyphs'>PCoA Plot of Treatment Groups</text>
+</g>
+</svg>
