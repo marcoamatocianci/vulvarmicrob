@@ -1,10 +1,11 @@
 # Vulvar Microbiome Analysis Pipeline
 
-This repository contains computational workflows for analyzing vulvar microbiome data through RNA sequencing and metagenomic approaches, as described in our publication. The analysis is structured into two primary components: microbiome characterization and methodological comparison.
+This repository contains computational workflows for analyzing vulvar microbiome data through RNA sequencing and metagenomic approaches, as described in our publication. The analysis is structured into two primary components: microbiome characterization and methodological comparison.   
+![Fig 1_Microbiome (1)](https://github.com/user-attachments/assets/e809c287-ea82-436c-ad1c-6e0a8473ad8c)
 
-   <img src="https://github.com/user-attachments/assets/01ca6b41-6e4a-446d-84f4-dc33419d6ad0" width="600" height="500">
 
 ---
+
 
 - **[Analysis 0: Decontamination and Filtering](#analysis-0-decontamination-and-filtering)**, 
 - **[Analysis 1: Methodological Comparison (RNA - DNA)](#analysis-1-methodological-comparison-rna---dna)** 
