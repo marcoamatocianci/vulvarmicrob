@@ -158,5 +158,72 @@ Code:`ComparativeOtherStudy.Rmd`
 
 
 ## Analysis 4: Host Differential Gene Expression
+Identifies differentially expressed genes (DEGs) between vaginal community state types (CSTs) and correlates them with epithelial keratinization pathways and dysbiosis scores.
+
+Code: Differentially_Expressed_Genes.Rmd
+
+    Data Processing Pipeline
+
+        Loads RNA-seq counts from ../local/data/GEP.count.xlsx and CST classifications from ../results/cluster_col.csv
+
+        Normalization: TMM normalization via edgeR (calcNormFactors)
+
+        Filtering: Retains genes expressed in ≥34% samples per CST group
+
+    Differential Expression Analysis
+
+r
+design <- model.matrix(~0 + clusters$Dominance)
+dge <- estimateDisp(dge)
+fit <- glmQLFit(dge, design)
+contrasts <- makeContrasts("IvII"=CSTI-CSTII, ..., levels=design)
+
+    Identifies DEGs (FDR<0.05, |logFC|>1) across 6 CST comparisons
+
+    Generates heatmaps of normalized expression for each contrast
+
+<img src="https://github.com/user-attachments/assets/75c8cfe5-1c4d-4897-b3ac-8636dd78fea6" width="500" height="350">
+
+Pathway Enrichment
+
+    ReactomePA analysis of DEGs reveals keratinization-related pathways:
+
+        r
+        result <- enrichPathway(mygenes, organism="human", universe=myuniverse)
+
+        Key pathway: Formation of the Cornified Envelope shows CST-specific expression patterns
+    <img src="https://github.com/user-attachments/assets/4884853b-c514-4019-a1e2-060002993905" width="300" height="230">
+
+    Dysbiosis Correlation
+
+        Stratifies samples by dysbiosis score quartiles (lowerqrt/upperqrt)
+
+        Identifies 127 DEGs between high/low dysbiosis states
+
+        Output: ../results/DEG_dysbio.xlsx
+
+Inputs:
+
+    ../local/data/GEP.count.xlsx Raw RNA-seq counts
+
+    ../results/cluster_col.csv CST classifications
+
+    ../local/data/zscore_reactome_all.xlsx Precomputed pathway scores
+
+Key Outputs:
+
+    Cluster-specific DEGs: ../results/DEG_clusters.xlsx
+
+    Pathway enrichment plots: ../results/images/*_enriched_pathways_plot.png
+
+    Combined PCA visualization of CSTs and keratinization scores
+
+Critical Implementation Notes:
+
+    Batch effects not currently addressed - recommend adding ComBat_seq preprocessing
+
+    filterByExpr step commented out - essential for removing low-expressed genes
+
+    Uses legacy estimateTagwiseDisp instead of robust GLM dispersion estimation
 
 
