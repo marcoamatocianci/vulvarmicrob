@@ -160,70 +160,56 @@ Code:`ComparativeOtherStudy.Rmd`
 ## Analysis 4: Host Differential Gene Expression
 Identifies differentially expressed genes (DEGs) between vaginal community state types (CSTs) and correlates them with epithelial keratinization pathways and dysbiosis scores.
 
-Code: Differentially_Expressed_Genes.Rmd
+**Code:** Differentially_Expressed_Genes.Rmd
 
-    Data Processing Pipeline
+**Output:** 
+  - `../results/DEG_dysbio.xlsx`
 
-        Loads RNA-seq counts from ../local/data/GEP.count.xlsx and CST classifications from ../results/cluster_col.csv
+**Input:**
+  - `../local/data/GEP.count.xlsx` Raw RNA-seq counts
 
-        Normalization: TMM normalization via edgeR (calcNormFactors)
+  - `../results/cluster_col.csv`  CST Classifications metadata
 
-        Filtering: Retains genes expressed in ≥34% samples per CST group
+  - `../local/data/zscore_reactome_all.xlsx` Precomputed pathway scores
 
-    Differential Expression Analysis
+1.  **Data Loading and Preprocessing**:
+    * Loads gene count data (`GEP.count.xlsx`) and sample cluster information (`cluster_col.csv`).
+    * Maps microbial dominance categories to CST types (CSTI, CSTII, CSTIII, CSTIV).
+    * Filters and normalizes gene counts using `edgeR` (TMM normalization).
+    * Filters genes based on expression presence across clusters.
 
-r
-design <- model.matrix(~0 + clusters$Dominance)
-dge <- estimateDisp(dge)
-fit <- glmQLFit(dge, design)
-contrasts <- makeContrasts("IvII"=CSTI-CSTII, ..., levels=design)
+2.  **Differential Gene Expression (DGE) Analysis - CSTs**:
+    * Performs DGE analysis using `edgeR`'s GLM QL F-test to compare different CSTs.
+    * Identifies DEGs based on P-value and log-fold change thresholds.
+    * Generates heatmaps (`pheatmap`) of DEGs for each contrast, scaled by row.
+    * Saves lists of DEGs to an Excel file (`DEG_clusters.xlsx`).
 
-    Identifies DEGs (FDR<0.05, |logFC|>1) across 6 CST comparisons
+3.  **Principal Component Analysis (PCA)**:
+    * Selects the top 1000 most variable genes based on row variances.
+    * Performs PCA on the normalized counts of these genes.
+    * Generates PCA plots (PC1 vs. PC2) colored by:
+        * Microbial `Dominance` (CST type).
+        * `Keratinization` score (loaded from `zscore_reactome_all.xlsx`).
+    * Combines plots using `patchwork`.
 
-    Generates heatmaps of normalized expression for each contrast
+4.  **Keratinization Score Analysis**:
+    * Visualizes the "Formation.of.the.Cornified.Envelope" pathway score (referred to as Keratinization Score) across different CSTs using boxplots.
+    * Performs statistical comparisons between CSTs using `ggpubr::stat_compare_means`.
 
-<img src="https://github.com/user-attachments/assets/75c8cfe5-1c4d-4897-b3ac-8636dd78fea6" width="500" height="350">
+5.  **Pathway Enrichment Analysis - CST DEGs**:
+    * For DEGs identified in each CST comparison:
+        * Converts gene symbols to Entrez IDs using `org.Hs.eg.db`.
+        * Performs Reactome pathway enrichment analysis using `ReactomePA::enrichPathway`.
+        * Generates and saves dot plots (`plotCount` custom function) for significant pathways.
 
-Pathway Enrichment
+6.  **Differential Gene Expression (DGE) Analysis - Dysbiosis Score**:
+    * Categorizes samples into "lower," "medium," and "higher" groups based on a `dysbio` score (derived from quantiles).
+    * Performs DGE analysis between "lower" and "higher" dysbiosis groups.
+    * Generates a heatmap of DEGs.
+    * Saves the list of DEGs related to dysbiosis (`DEG_dysbio.xlsx`).
 
-    ReactomePA analysis of DEGs reveals keratinization-related pathways:
+7.  **Pathway Enrichment Analysis - Dysbiosis DEGs**:
+    * Performs Reactome pathway enrichment analysis for DEGs identified in the dysbiosis comparison, similar to the CST DEG enrichment.
+    * Generates and saves dot plots.
 
-        r
-        result <- enrichPathway(mygenes, organism="human", universe=myuniverse)
-
-        Key pathway: Formation of the Cornified Envelope shows CST-specific expression patterns
-    <img src="https://github.com/user-attachments/assets/4884853b-c514-4019-a1e2-060002993905" width="300" height="230">
-
-    Dysbiosis Correlation
-
-        Stratifies samples by dysbiosis score quartiles (lowerqrt/upperqrt)
-
-        Identifies 127 DEGs between high/low dysbiosis states
-
-        Output: ../results/DEG_dysbio.xlsx
-
-Inputs:
-
-    ../local/data/GEP.count.xlsx Raw RNA-seq counts
-
-    ../results/cluster_col.csv CST classifications
-
-    ../local/data/zscore_reactome_all.xlsx Precomputed pathway scores
-
-Key Outputs:
-
-    Cluster-specific DEGs: ../results/DEG_clusters.xlsx
-
-    Pathway enrichment plots: ../results/images/*_enriched_pathways_plot.png
-
-    Combined PCA visualization of CSTs and keratinization scores
-
-Critical Implementation Notes:
-
-    Batch effects not currently addressed - recommend adding ComBat_seq preprocessing
-
-    filterByExpr step commented out - essential for removing low-expressed genes
-
-    Uses legacy estimateTagwiseDisp instead of robust GLM dispersion estimation
-
-
++
