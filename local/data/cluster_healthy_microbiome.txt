@@ -14,7 +14,6 @@
 "H_TT24";"Lactobacillus iners";"cl_4"
 "H_TT28";"Others";"cl_3"
 "H_TT3";"Lactobacillus iners";"cl_4"
-"H_TT4";"Others";"cl_3"
 "H_TT41";"Lactobacillus iners";"cl_4"
 "H_TT5";"Lactobacillus crispatus";"cl_1"
 "H_TT51";"Lactobacillus iners";"cl_4"
