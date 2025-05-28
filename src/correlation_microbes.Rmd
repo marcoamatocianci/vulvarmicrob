@@ -1,0 +1,50 @@
+---
+title: "Microbiome Data Analysis"
+author: "Emanuele Monteleone"
+date: "2024-10-05"
+output: html_document
+---
+
+This R Markdown document performs a basic microbiome data analysis, including data loading, normalization, CLR transformation, and correlation analysis.
+
+```{r setup, include=FALSE}
+# Set global options for R chunks
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+# Load necessary libraries
+# If these libraries are not installed, uncomment and run the following lines:
+# install.packages("reshape2")
+# install.packages("WGCNA") # For corAndPvalue function
+# install.packages("vegan") # For decostand function
+library(reshape2)
+library(WGCNA)
+library(vegan)
+```
+load data matrix of vulvar microbe abundances
+```{r load_data }
+# This point to local/data dir of this repository
+counts_braken<-read.delim("local/data/bracken_merged_abundances.num.filtered.nocontam.txt")
+rownames(counts_braken)=counts_braken$name
+counts_braken$name=NULL
+colnames(counts_braken)<-gsub("H_","",colnames(counts_braken))
+```
+data normalization
+``` {r norm}
+counts_braken_comp <- sweep(counts_braken, 2, colSums(counts_braken), "/")
+clr_microbiome_data <- decostand(counts_braken_comp+0.0001, method="clr")
+```
+Correlation analysis using the corAndPvalue function of the WGCNA package
+```{r corr}
+cor_microbiome=corAndPvalue(t(clr_microbiome_data),method = "spearman")
+results=reshape2::melt(cor_microbiome$cor)
+results$pval=reshape2::melt(cor_microbiome$p)$value
+colnames(results)<-c("microbe1","microbe2","cor","cor_pval")
+```
+Output for cytoscape analysis
+```{r output}
+edge_list <- data.frame(Source = results$microbe1,
+Target = results$microbe2,
+Correlation = results$cor,
+P_Value = results$cor_pval)
+write.csv(edge_list, "local/results/edge_table_cor_microbiome_clr_spearman.csv", row.names = FALSE,quote = F)
+```
