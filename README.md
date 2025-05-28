@@ -12,7 +12,7 @@ This repository contains computational workflows for analyzing vulvar microbiome
 - **[Analysis 2: Vulvar Microbiome Characterization](#analysis-2-vulvar-microbiome-characterization)** 
 - **[Analysis 3: Cross Studies](#analysis-3-cross-studies)** 
 - **[Analysis 4: Host Differential Gene Expression](#analysis-4-host-differential-gene-expression)** 
-
+- **[Analysis 5: Microbiome Data Correlation Analysis for Cytoscape](#analysis-4-host-differential-gene-expression)**
 ---
 
 
@@ -84,13 +84,13 @@ Processes microbiome data to characterize community structure, identify communit
 
  - **Heatmap of row-scaled TSS data**, annotated by cluster and CSTs.
    
-       - Differential Abundance Testing (Between Clusters):
+   - Differential Abundance Testing (Between Clusters):
           Normalizes counts using edgeR TMM method and calculates logCPM.
           Performs Wilcoxon rank-sum tests comparing taxon abundance (logCPM) between each cluster and all others.
           Identifies Differentially Abundant Microorganisms (DAMs) based on FDR and median change thresholds.
           Generates a heatmap visualizing only the significant DAMs.
       
-       - Cluster Composition Visualization:
+    - Cluster Composition Visualization:
           Calculates the average taxonomic composition for each dominant species group (CST).
           Generates pie charts visualizing the average composition for each identified CST.
 
@@ -154,8 +154,8 @@ Code:`ComparativeOtherStudy.Rmd`
   - `../local/data/Vulvodinia_Samples.xlsx` Spreadsheet with sample information (loaded but not explicitly used in the main analysis steps shown).
   - `../local/data/MicroPhenoDBAssociationScores.csv` External database file linking microbes to phenotype/disease association scores.
 
----
 
+---
 
 ## Analysis 4: Host Differential Gene Expression
 Identifies differentially expressed genes (DEGs) between vaginal community state types (CSTs) and correlates them with epithelial keratinization pathways and dysbiosis scores.
@@ -211,7 +211,8 @@ Identifies differentially expressed genes (DEGs) between vaginal community state
 7.  **Pathway Enrichment Analysis - Dysbiosis DEGs**:
     * Performs Reactome pathway enrichment analysis for DEGs identified in the dysbiosis comparison, similar to the CST DEG enrichment.
     * Generates and saves dot plots.
-  
+
+---
    
 ## Analysis 5: Microbiome Data Correlation Analysis for Cytoscape
 
