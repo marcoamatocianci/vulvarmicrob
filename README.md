@@ -211,3 +211,26 @@ Identifies differentially expressed genes (DEGs) between vaginal community state
 7.  **Pathway Enrichment Analysis - Dysbiosis DEGs**:
     * Performs Reactome pathway enrichment analysis for DEGs identified in the dysbiosis comparison, similar to the CST DEG enrichment.
     * Generates and saves dot plots.
+  
+   
+## Analysis 5: Microbiome Data Correlation Analysis for Cytoscape
+
+**Code:** `CorrelationAnalysis.Rmd`
+
+**Input:**
+- `bracken_merged_abundances.num.filtered.nocontam.txt` Filtered and decontaminated abundances from Kraken2/Bracken pipeline (output from Analysis 0)
+
+**Results:**
+- `edge_table_cor_microbiome_clr_spearman.csv` - Edge list containing microbe-microbe correlations, p-values, and source/target for network visualization (e.g., in Cytoscape).
+
+---
+
+Performs a detailed correlation analysis on microbiome abundance data. The script is designed to load pre-processed microbial abundance data, apply necessary transformations, and then compute pairwise correlations between microbes, ultimately generating an output file suitable for network visualization.
+
+The analysis begins by loading the input data matrix, `bracken_merged_abundances.num.filtered.nocontam.txt`, which is expected to contain filtered and decontaminated microbial abundances. This file is typically an output from an upstream data preparation step. Upon loading, the script sets microbe names as row names, removes an unnecessary column (`name`), and cleans up column names by removing "H_" prefixes.
+
+Following data loading, the script performs two key normalization steps crucial for compositional data analysis. First, it converts raw counts into compositional data by dividing each count by the total sum of counts for that sample (Total Sum Scaling - TSS). Second, it applies a Centered Log-Ratio (CLR) transformation to the compositional data. A small pseudocount of $0.0001$ is added to all values before the CLR transformation to handle potential zero values, ensuring the logarithm is well-defined.
+
+The core of this R Markdown document is the correlation analysis. It utilizes the `corAndPvalue` function from the `WGCNA` package to calculate pairwise Spearman correlations between the CLR-transformed microbial abundances. This function also computes the corresponding p-values for each correlation. The resulting correlation and p-value matrices are then melted into a long format using `reshape2::melt`, making them easier to work with.
+
+Finally, the processed correlation results are structured into an edge list, which is a common format for network analysis. This `edge_list` data frame includes four columns: `Source` (representing the first microbe in a pair), `Target` (representing the second microbe), `Correlation` (the Spearman's correlation coefficient), and `P_Value` (the significance of the correlation). This edge list is then saved as a CSV file named `edge_table_cor_microbiome_clr_spearman.csv` in the `local/results/` directory. This output file is specifically formatted to be readily imported into network visualization software like Cytoscape for further exploration and interpretation of microbial co-occurrence or co-exclusion patterns.
