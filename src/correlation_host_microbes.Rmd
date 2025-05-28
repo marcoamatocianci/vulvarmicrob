@@ -39,22 +39,15 @@ load count data and metadata
 ```{r}
 counts<-read.xlsx(file.path(DATA_DIR,"GEP.count.xlsx"),rowNames = T)
 
-samples<-read.xlsx(file.path(DATA_DIR,"Vulvodinia Samples .xlsx"))
-samples_sub<-samples[samples$PatientID%in%colnames(counts),]
-samples_info<-unique(data.frame(PatientID=samples$PatientID, status=samples$SampleType))
-samples_info<-samples_info[with(samples_info,order(status)),]
-rownames(samples_info)<-samples_info$PatientID
-samples_info$PatientID<-NULL
-H_samples<-samples_info %>% tibble::rownames_to_column(var="sample") %>% filter(status == "H") %>% pull(sample) 
-meta_h<-samples_info %>% filter(status == "H", rownames(.)%in% colnames(counts) , rownames(.)!="BP3")
-counts_healthy=counts[,match(rownames(meta_h),colnames(counts))]
+meta<-read.xlsx(file.path(DATA_DIR,"meta.xlsx"),rowNames = T)
+counts=counts[,match(rownames(meta),colnames(counts))]
 ```
 
 
 Normalize and filter data using DESeq2 for both host and microbiome RNASeq data
 
 ```{r}
-dds_rnaseq<-DESeqDataSetFromMatrix(countData = as.matrix(counts_healthy),colData = meta_h, design = ~1)
+dds_rnaseq<-DESeqDataSetFromMatrix(countData = as.matrix(counts),colData = meta, design = ~1)
 nreads <- 10
 nsamples <- 10
 keep <- rowSums(counts(dds_rnaseq) >= nreads) >= nsamples
@@ -65,8 +58,8 @@ braken<-read.delim(file.path(DATA_DIR,"bracken_merged_abbundances.num.filtered.t
 rownames(braken)=braken$name
 braken$name=NULL
 braken<-braken[!grepl("taxonomy",colnames(braken))]
-counts_braken=braken[,match(rownames(meta_h),colnames(braken))]
-dds_microbiome<-DESeqDataSetFromMatrix(countData = as.matrix(counts_braken),colData = meta_h, design = ~1)
+counts_braken=braken[,match(rownames(meta),colnames(braken))]
+dds_microbiome<-DESeqDataSetFromMatrix(countData = as.matrix(counts_braken),colData = meta, design = ~1)
 dds_microbiome<-estimateSizeFactors(dds_microbiome)
 gene_matrix=t(counts(dds_rnaseq,normalized=T))
 microbe_matrix=t(counts(dds_microbiome,normalized=T))
@@ -128,9 +121,9 @@ picked_power=7
 Perform WGCNA analysis
 
 ```{r}
-netwk <- blockwiseModules(t(assay(dds_rnaseq_vst)),                # <= input here
+netwk <- blockwiseModules(t(assay(dds_rnaseq_vst)),                
                           # == Adjacency Function ==
-                          power = picked_power,                # <= power here
+                          power = picked_power,
                           networkType = "signed",
                           # == Tree and Block Options ==
                           deepSplit = 2,
@@ -238,44 +231,42 @@ circos.initialize(factors = unique_terms, xlim = c(0, 1))
 circos.track(
 ylim = c(0, 1), bg.border = NA, track.height = 0.05,
 panel.fun = function(x, y) {
-sector_index <- get.cell.meta.data("sector.index")
-category_name <- combined_df %>% filter(Term == sector_index) %>% pull(Category)
-# Draw category bar
-circos.rect(
-xleft = 0, ybottom = 0, xright = 1, ytop = 1,
-col = category_colors[category_name], border = NA
-)
-}
+     sector_index <- get.cell.meta.data("sector.index")
+     category_name <- combined_df %>% filter(Term == sector_index) %>% pull(Category)
+     # Draw category bar
+     circos.rect(
+     xleft = 0, ybottom = 0, xright = 1, ytop = 1,
+     col = category_colors[category_name], border = NA
+          )
+     }
 )
 # Create a barplot track for terms
 circos.trackPlotRegion(
-factors = unique_terms, ylim = c(0, max(combined_df$Transformed.P.value)),
-bg.border = NA,
-panel.fun = function(x, y) {
-sector_index <- get.cell.meta.data("sector.index")
-term_data <- combined_df %>% filter(Term == sector_index)
-term_value <- term_data$Transformed.P.value
-category_name <- term_data$Category
-# Use circos.barplot for drawing
-circos.barplot(
-term_value, pos = 0.5,
-col = color_palette(term_value)
-)
-circos.text(
-0.5, term_value + 0.2, term_data$Term_slim,
-facing="reverse.clockwise", niceFacing = TRUE, cex = 0.5
-)
-}
+     factors = unique_terms, ylim = c(0, max(combined_df$Transformed.P.value)),
+     bg.border = NA,
+     panel.fun = function(x, y) {
+          sector_index <- get.cell.meta.data("sector.index")
+          term_data <- combined_df %>% filter(Term == sector_index)
+          term_value <- term_data$Transformed.P.value
+          category_name <- term_data$Category
+          # Use circos.barplot for drawing
+          circos.barplot(
+               term_value, pos = 0.5,
+               col = color_palette(term_value)
+          )
+          circos.text(
+               0.5, term_value + 0.2, term_data$Term_slim,
+               facing="reverse.clockwise", niceFacing = TRUE, cex = 0.5
+          )
+     }
 )
 lgd_term_value <- Legend(
-at = seq(from = floor(min(combined_df$Transformed.P.value)),
-to = ceiling(max(combined_df$Transformed.P.value)), by = 1),
-col_fun = color_palette,
-title = "Transformed -log10(P-value)"
+     at = seq(from = floor(min(combined_df$Transformed.P.value)),
+     to = ceiling(max(combined_df$Transformed.P.value)), by = 1),
+     col_fun = color_palette,
+     title = "Transformed -log10(P-value)"
 )
 draw(lgd_term_value, x = unit(1, "npc") - unit(30, "mm"), y = unit(1, "mm"), just = c("left", "bottom"))
-
-
 
 circos.clear()
 #circos.par("track.height" = 0.5, start.degree = 90, gap.degree = 1,canvas.xlim = c(-1.5, 1.5), canvas.ylim = c(-3, 3))  # Adjust track height and gaps
@@ -283,50 +274,46 @@ unique_terms <- combined_df$Term
 circos.initialize(sectors  = unique_terms, xlim = c(0, 1))
 # Create a track for the category bars
 circos.track(
-ylim = c(0, 1), bg.border = NA, track.height = 0.05,
-panel.fun = function(x, y) {
-sector_index <- get.cell.meta.data("sector.index")
-category_name <- combined_df %>% filter(Term == sector_index) %>% pull(Category)
-# Draw category bar
-circos.rect(
-xleft = 0, ybottom = 0, xright = 1, ytop = 1,
-col = category_colors[category_name], border = NA
-)
-}
+     ylim = c(0, 1), bg.border = NA, track.height = 0.05,
+     panel.fun = function(x, y) {
+          sector_index <- get.cell.meta.data("sector.index")
+          category_name <- combined_df %>% filter(Term == sector_index) %>% pull(Category)
+          # Draw category bar
+          circos.rect(
+               xleft = 0, ybottom = 0, xright = 1, ytop = 1,
+               col = category_colors[category_name], border = NA
+          )
+     }
 )
 # Create a barplot track for terms
 circos.trackPlotRegion(
-factors = unique_terms, ylim = c(0, max(combined_df$Transformed.P.value)),
-bg.border = NA,
-panel.fun = function(x, y) {
-sector_index <- get.cell.meta.data("sector.index")
-term_data <- combined_df %>% filter(Term == sector_index)
-term_value <- term_data$Transformed.P.value
-category_name <- term_data$Category
-# Use circos.barplot for drawing
-circos.barplot(
-term_value, pos=0.5,
-col = color_palette(term_value)
-)
-circos.text(
-0.5, term_value + 0.2, term_data$Term_slim,
-facing="reverse.clockwise", niceFacing = TRUE, cex = 0.5
-)
-}
+     factors = unique_terms, ylim = c(0, max(combined_df$Transformed.P.value)),
+     bg.border = NA,
+     panel.fun = function(x, y) {
+          sector_index <- get.cell.meta.data("sector.index")
+          term_data <- combined_df %>% filter(Term == sector_index)
+          term_value <- term_data$Transformed.P.value
+          category_name <- term_data$Category
+          # Use circos.barplot for drawing
+          circos.barplot(
+               term_value, pos=0.5,
+               col = color_palette(term_value)
+          )
+     circos.text(
+          0.5, term_value + 0.2, term_data$Term_slim,
+          facing="reverse.clockwise", niceFacing = TRUE, cex = 0.5
+          )
+     }
 )
 lgd_term_value <- Legend(
-at = seq(from = floor(min(combined_df$Transformed.P.value)),
-to = ceiling(max(combined_df$Transformed.P.value)), by = 1),
-col_fun = color_palette,
-title = "Transformed -log10(P-value)"
-)
+     at = seq(from = floor(min(combined_df$Transformed.P.value)),
+     to = ceiling(max(combined_df$Transformed.P.value)), by = 1),
+     col_fun = color_palette,
+     title = "Transformed -log10(P-value)"
+     )
 draw(lgd_term_value, x = unit(1, "npc") - unit(30, "mm"), y = unit(1, "mm"), just = c("left", "bottom"))
 circos.clear()
-
-
-
 ```
-
 
 Create network for Cytoscape analysis
 
@@ -369,10 +356,10 @@ microorg_module_edges <- data.frame(Source = significant_correlations_modules$mi
 edge_list <- rbind(edge_list, microorg_module_edges)
 
 # Write the node list to a CSV file
-write.csv(node_list, "data/node_list.csv", row.names = FALSE,quote = F)
+write.csv(node_list, file.path(PROJECT_DIR, "results/node_list.csv"), row.names = FALSE,quote = F)
 
 # Write the edge list to a CSV file
-write.csv(edge_list, "data/edge_list.csv", row.names = FALSE,quote = F)
+write.csv(edge_list, file.path(PROJECT_DIR, "results/edge_list.csv"), row.names = FALSE,quote = F)
 
 
 ```
