@@ -12,7 +12,7 @@ This repository contains computational workflows for analyzing vulvar microbiome
 - **[Analysis 2: Vulvar Microbiome Characterization](#analysis-2-vulvar-microbiome-characterization)** 
 - **[Analysis 3: Cross Studies](#analysis-3-cross-studies)** 
 - **[Analysis 4: Host Differential Gene Expression](#analysis-4-host-differential-gene-expression)** 
-- **[Analysis 5: Microbiome Data Correlation Analysis for Cytoscape](#analysis-4-host-differential-gene-expression)**
+- **[Analysis 5: Microbiome Data Correlation Analysis for Cytoscape](#analysis-5-Microbiome-Data-Correlation-Analysis-for-Cytoscape)**
 ---
 
 
