@@ -216,22 +216,65 @@ Identifies differentially expressed genes (DEGs) between vaginal community state
    
 ## Analysis 5: Microbiome Data Correlation Analysis for Cytoscape
 
-**Code:** `CorrelationAnalysis.Rmd`
+**Code:** `correlation_host_microbes.Rmd`
 
 **Input:**
+- `GEP.count.xlsx` Raw read counts for host genes
+- `meta.xlsx` metadata file listing samples used in the analysis
 - `bracken_merged_abundances.num.filtered.nocontam.txt` Filtered and decontaminated abundances from Kraken2/Bracken pipeline (output from Analysis 0)
 
 **Results:**
-- `edge_table_cor_microbiome_clr_spearman.csv` - Edge list containing microbe-microbe correlations, p-values, and source/target for network visualization (e.g., in Cytoscape).
+- `results/edge_list.csv` - Edge list containing microbe-microbe, host-microbe and host-host correlations, p-values, and source/target for network visualization (e.g., in Cytoscape).
+- `results/node_list.csv` - Node list that can be decorated with metadata column for Cytoscape analysis
 
 ---
 
-Performs a detailed correlation analysis on microbiome abundance data. The script is designed to load pre-processed microbial abundance data, apply necessary transformations, and then compute pairwise correlations between microbes, ultimately generating an output file suitable for network visualization.
+This script documents a sophisticated **integrative multi-omics pipeline** designed to explore the interactions between the **host transcriptome** (RNA-seq) and the **vulvar microbiome** (taxonomic abundances).
 
-The analysis begins by loading the input data matrix, `bracken_merged_abundances.num.filtered.nocontam.txt`, which is expected to contain filtered and decontaminated microbial abundances. This file is typically an output from an upstream data preparation step. Upon loading, the script sets microbe names as row names, removes an unnecessary column (`name`), and cleans up column names by removing "H_" prefixes.
+By combining gene co-expression networks with cross-domain correlations, the analysis identifies how specific microbial taxa influence epithelial biological processes such as inflammation, keratinization, and immune response.
 
-Following data loading, the script performs two key normalization steps crucial for compositional data analysis. First, it converts raw counts into compositional data by dividing each count by the total sum of counts for that sample (Total Sum Scaling - TSS). Second, it applies a Centered Log-Ratio (CLR) transformation to the compositional data. A small pseudocount of $0.0001$ is added to all values before the CLR transformation to handle potential zero values, ensuring the logarithm is well-defined.
+---
 
-The core of this R Markdown document is the correlation analysis. It utilizes the `corAndPvalue` function from the `WGCNA` package to calculate pairwise Spearman correlations between the CLR-transformed microbial abundances. This function also computes the corresponding p-values for each correlation. The resulting correlation and p-value matrices are then melted into a long format using `reshape2::melt`, making them easier to work with.
+### **Analysis Workflow Overview**
 
-Finally, the processed correlation results are structured into an edge list, which is a common format for network analysis. This `edge_list` data frame includes four columns: `Source` (representing the first microbe in a pair), `Target` (representing the second microbe), `Correlation` (the Spearman's correlation coefficient), and `P_Value` (the significance of the correlation). This edge list is then saved as a CSV file named `edge_table_cor_microbiome_clr_spearman.csv` in the `local/results/` directory. This output file is specifically formatted to be readily imported into network visualization software like Cytoscape for further exploration and interpretation of microbial co-occurrence or co-exclusion patterns.
+The code is organized into several distinct functional blocks:
+
+#### **1. Data Preprocessing & Normalization**
+
+* **Host Data:** Utilizes `DESeq2` for filtering and size-factor normalization of gene expression counts.
+* **Microbial Data:** Applies **CLR (Centered Log-Ratio)** transformation to Bracken-derived abundances to handle the compositional nature of microbiome data.
+* **Variance Stabilization:** Uses `vst` to prepare host data specifically for network construction.
+
+#### **2. WGCNA (Weighted Gene Co-expression Network Analysis)**
+
+* Identifies modules of highly co-regulated genes.
+* Determines the optimal soft-thresholding power (selected as 7 in this script) to achieve a scale-free topology (R^2 > 0.9).
+* **Module-Trait Relationship:** Correlates these gene modules with microbial "dominance" clusters (e.g., *Lactobacillus*-dominated vs. others) to find biological signatures linked to specific community states.
+
+#### **3. Cross-Domain Correlation & Network Construction**
+
+* Calculates **Spearman correlations** between host genes and microbial taxa.
+* Filters for high-confidence interactions (|R| > 0.6 and p < 0.05).
+* Generates **Edge and Node lists** formatted for **Cytoscape**, allowing for the visualization of Host-Host, Microbe-Microbe, and Host-Microbe interaction networks.
+
+#### **4. Functional Enrichment & Annotation**
+
+* **EnrichR:** Performs pathway analysis (GO Biological Process, Reactome, etc.) for each WGCNA module.
+* **Custom Annotation:** Maps host genes to specific epithelial functions like *apoptotic process*, *keratinization*, and *innate immune response* using `org.Hs.eg.db`.
+
+#### **5. Microbial Functional Impact & "Bridge" Analysis**
+
+* **Diverging Barplots:** Visualizes the percentage of positive vs. negative correlations between specific microbes (like *Gardnerella* or *Lactobacillus*) and host biological processes.
+* **Bridge Analysis:** Identifies "Bridge Genes"—critical host nodes that interact with multiple distinct microbial taxa—visualized through a clustered heatmap to show patterns of co-regulation.
+
+---
+
+### **Key Biological Output**
+
+The final outputs of this script are intended to answer:
+
+1. Which host pathways are activated or suppressed by the presence of specific bacteria?
+2. Which genes act as the primary "sensors" or "responders" to shifts in the microbiome?
+3. How do different microbes differ in their molecular crosstalk with the host epithelium?
+
+
