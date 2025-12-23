@@ -12,7 +12,7 @@ This repository contains computational workflows for analyzing vulvar microbiome
 - **[Analysis 2: Vulvar Microbiome Characterization](#analysis-2-vulvar-microbiome-characterization)** 
 - **[Analysis 3: Cross Studies](#analysis-3-cross-studies)** 
 - **[Analysis 4: Host Differential Gene Expression](#analysis-4-host-differential-gene-expression)** 
-- **[Analysis 5: Microbiome Data Correlation Analysis for Cytoscape](#analysis-5-Microbiome-Data-Correlation-Analysis-for-Cytoscape)**
+- **[Analysis 5: Correlation Analysis: Host-microbiome crosstalk](#analysis-5-Correlation-analysis-host-microbiome-crosstalk)**
 ---
 
 
@@ -276,5 +276,6 @@ The final outputs of this script are intended to answer:
 1. Which host pathways are activated or suppressed by the presence of specific bacteria?
 2. Which genes act as the primary "sensors" or "responders" to shifts in the microbiome?
 3. How do different microbes differ in their molecular crosstalk with the host epithelium?
+
 
 
