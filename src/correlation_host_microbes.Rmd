@@ -27,10 +27,121 @@ library used in this analysis
 suppressPackageStartupMessages(library(WGCNA))
 suppressPackageStartupMessages(library(openxlsx))
 suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(tdyr))
+suppressPackageStartupMessages(library(tibble))
 suppressPackageStartupMessages(library(DESeq2))
 suppressPackageStartupMessages(library(enrichR))
 suppressPackageStartupMessages(library(circlize))
 suppressPackageStartupMessages(library(purrr))
+suppressPackageStartupMessages(library(vegan))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(biomaRt))
+suppressPackageStartupMessages(library(org.Hs.eg.db))
+
+```
+
+Helper Functions
+
+```{r}
+#Edge List Intra-Domain (Host & Microbe)
+create_intra_domain_edges <- function(cor_results, source_col_name, target_col_name, interaction_type) {
+  
+  cor_matrix <- cor_results$cor
+  p_matrix <- cor_results$p
+  
+  edges_long <- cor_matrix %>%
+    as.data.frame() %>%
+    tibble::rownames_to_column(source_col_name) %>%
+    tidyr::pivot_longer(cols = -source_col_name, 
+                        names_to = target_col_name, 
+                        values_to = "Correlation_R")
+  
+  p_long <- p_matrix %>%
+    as.data.frame() %>%
+    tibble::rownames_to_column(source_col_name) %>%
+    tidyr::pivot_longer(cols = -source_col_name, 
+                        names_to = target_col_name, 
+                        values_to = "P_Value")
+  
+  edge_table_raw <- inner_join(edges_long, p_long, 
+                               by = c(source_col_name, target_col_name))
+  
+  edge_table_filtered <- edge_table_raw %>%
+    dplyr::filter(P_Value < P_THRESHOLD, 
+                  abs(Correlation_R) >= R_THRESHOLD,
+                  !!sym(source_col_name) != !!sym(target_col_name)) %>% # Removes A <-> A
+    
+    # Removes duplicates (keep only  A <-> B and not B <-> A)
+    dplyr::rowwise() %>%
+    dplyr::filter(!!sym(source_col_name) < !!sym(target_col_name)) %>% 
+    dplyr::ungroup() %>%
+    
+    dplyr::mutate(
+      Source = !!sym(source_col_name),
+      Target = !!sym(target_col_name),
+      Interaction = interaction_type,
+      Direction = ifelse(Correlation_R > 0, "Positiva", "Negativa")
+    ) %>%
+    dplyr::select(Source, Target, Interaction, Correlation_R, P_Value, Direction)
+  
+  return(edge_table_filtered)
+}
+
+#Edge List Inter-Domain (Host ↔ Microbe)
+create_inter_domain_edges <- function(cor_results, interaction_type) {
+  
+  cor_matrix <- cor_results$cor
+  p_matrix <- cor_results$p
+  
+  cor_long <- cor_matrix %>%
+    as.data.frame() %>%
+    tibble::rownames_to_column("Host_Gene") %>%
+    tidyr::pivot_longer(cols = -Host_Gene, 
+                        names_to = "Microbe_KO", 
+                        values_to = "Correlation_R")
+  
+  p_long <- p_matrix %>%
+    as.data.frame() %>%
+    tibble::rownames_to_column("Host_Gene") %>%
+    tidyr::pivot_longer(cols = -Host_Gene, 
+                        names_to = "Microbe_KO", 
+                        values_to = "P_Value")
+  
+  edge_table_raw <- inner_join(cor_long, p_long, 
+                               by = c("Host_Gene", "Microbe_KO"))
+  
+  edge_table_filtered <- edge_table_raw %>%
+    dplyr::filter(P_Value < P_THRESHOLD, 
+                  abs(Correlation_R) >= R_THRESHOLD) %>%
+    
+    dplyr::mutate(
+      Source = Host_Gene,
+      Target = Microbe_KO,
+      Interaction = interaction_type,
+      Direction = ifelse(Correlation_R > 0, "Positiva", "Negativa")
+    ) %>%
+    dplyr::select(Source, Target, Interaction, Correlation_R, P_Value, Direction)
+  
+  return(edge_table_filtered)
+}
+
+assign_function <- function(gene) {
+  if (gene %in% immune) return("Immune")
+  if (gene %in% kerat) return("Keratinization")
+  if (gene %in% apo) return("apoptotic process")
+  if (gene %in% inate_immune) return("innate immune response")
+  if (gene %in% cell_migration) return("cell migration")
+  if (gene %in%cell_diff) return("epithelial cell differentiation")
+  if (gene %in% wound) return("wound healing")
+  if (gene %in% reg_infl) return("regulation of inflammatory response")
+  return("Other/General")
+}
+
+getGene<-function(anno_file, term) {
+  gene_list <- anno_file |> dplyr::filter(PROCESS_NAME==term) |> 
+  pull(SYMBOL) |> unique()
+  return(gene_list)
+}
 ```
 
 
@@ -44,8 +155,7 @@ counts=counts[,match(rownames(meta),colnames(counts))]
 ```
 
 
-Normalize and filter data using DESeq2 for both host and microbiome RNASeq data
-
+Normalize and filter hosta gene expression data using DESeq2 
 ```{r}
 dds_rnaseq<-DESeqDataSetFromMatrix(countData = as.matrix(counts),colData = meta, design = ~1)
 nreads <- 10
@@ -53,16 +163,16 @@ nsamples <- 10
 keep <- rowSums(counts(dds_rnaseq) >= nreads) >= nsamples
 dds_rnaseq <- dds_rnaseq[keep,]
 dds_rnaseq<-estimateSizeFactors(dds_rnaseq)
-#microbiome
-braken<-read.delim(file.path(DATA_DIR,"bracken_merged_abbundances.num.filtered.txt"))
-rownames(braken)=braken$name
-braken$name=NULL
-braken<-braken[!grepl("taxonomy",colnames(braken))]
-counts_braken=braken[,match(rownames(meta),colnames(braken))]
-dds_microbiome<-DESeqDataSetFromMatrix(countData = as.matrix(counts_braken),colData = meta, design = ~1)
-dds_microbiome<-estimateSizeFactors(dds_microbiome)
+```
+
+Normalized microbiome data using CLR normalization
+```{r}
+counts_braken<-read.delim(file.path(DATA_DIR,"bracken_merged_abundances.num.filtered.nocontam.txt"))
+colnames(counts_braken)<-gsub("H_","",colnames(counts_braken))
+counts_braken_comp <- sweep(counts_braken, 2, colSums(counts_braken), "/")
+clr_microbiome_data <- decostand(counts_braken_comp+0.0001, method="clr")
 gene_matrix=t(counts(dds_rnaseq,normalized=T))
-microbe_matrix=t(counts(dds_microbiome,normalized=T))
+microbe_matrix=t(t(clr_microbiome_data))
 ```
 
 
@@ -76,13 +186,20 @@ colnames(results)<-c("Gene","microorg","cor","cor_pval")
 significant_correlations <- results[which(results$cor_pval < 0.05 & abs(results$cor) > 0.6), ]
 ```
 
-
-Filter and normalize again the data and perform WGCNA analysis
+Calculate correlation between microbes and separately between host genes
 
 ```{r}
-# filt and normalize again 
+# clr + spearman
+cor_microbiome <- corAndPvalue(t(clr_microbiome_data),method = "spearman")
+cor_host<-corAndPvalue(gene_matrix,method = "spearman")
+```
+
+
+Filter and normalize the data and perform WGCNA analysis
+
+```{r}
+# filt and normalize again using varianceStabilizingTransformation (DESeq2)
 dds_rnaseq_vst<-varianceStabilizingTransformation(dds_rnaseq[rownames(dds_rnaseq)%in%significant_correlations$Gene,])
-#similarity_matrix <- WGCNA::cor(t(counts(dds_rnaseq,normalized=T)))
 enableWGCNAThreads(nThreads =7)
 powers = c(c(1:10), seq(from = 12, to = 20, by = 2))
 sft = pickSoftThreshold(t(assay(dds_rnaseq_vst)), powerVector = powers,verbose=5)
@@ -187,180 +304,191 @@ dev.off()
 Perform EnrichR analysis for each module
 
 ```{r}
+dbs<-c("GO_Biological_Process_2025","Elsevier_Pathway_Collection","Reactome_Pathways_2024")
+websiteLive <- getOption("enrichR.live")
 module_df <- data.frame(
   gene_id = names(netwk$colors),
   colors = labels2colors(netwk$colors)
 )
 #split by color
 module_df_list<-split(module_df$gene_id,module_df$colors)
-dbs<-c("KEGG_2021_Human","GO_Biological_Process_2023")
-
-enriched_module_healthy <- lapply(module_df_list, function(x) enrichr(x, dbs))
-
-for (name in names(enriched_module_healthy)) {
-  # Construct the file name using the name of the data frame
-  file_name <- paste0("data/",name, "_module_EnrichR.txt")
-  
-  # Write the data frame to a CSV file
-  write.table(enriched_module_healthy[[name]]$KEGG_2021_Human, file_name, row.names = FALSE,sep="\t",quote=F )
+if (websiteLive) {
+  enriched_degs <- lapply(module_df_list, function(x) enrichr(x, dbs))
 }
-combined_df <- bind_rows(
-  lapply(names(enriched_module_healthy), function(category) {
-  df <- enriched_module_healthy[[category]]$GO_Biological_Process_2023
-  df<- df[1:5,]; df$Category <- category
-  df
-  })
-)
-
-combined_df <- combined_df %>%
-mutate(Transformed.P.value = -log10(Adjusted.P.value)) %>% filter(Category!="grey")
-combined_df$Category=factor(combined_df$Category, levels = c("yellow","magenta","blue","salmon","greenyellow","green","turquoise","red","pink","tan","brown","purple","black"))
-combined_df <- combined_df %>% arrange(Category,Term)
-combined_df$Term<-makeUnique(combined_df$Term)
-category_colors <- set_names(unique(as.character(combined_df$Category)))
-
-# Create a color palette based on transformed p-values
-color_palette <- colorRamp2(range(combined_df$Transformed.P.value), c("blue", "red"))
-# Initialize the Circos plot
-circos.clear()
-circos.par("track.height" = 0.3, start.degree = 90, gap.degree = 0.5)  # Adjust track height and gaps
-# Initialize factors
-unique_terms <- combined_df$Term
-circos.initialize(factors = unique_terms, xlim = c(0, 1))
-# Create a track for the category bars
-circos.track(
-ylim = c(0, 1), bg.border = NA, track.height = 0.05,
-panel.fun = function(x, y) {
-     sector_index <- get.cell.meta.data("sector.index")
-     category_name <- combined_df %>% filter(Term == sector_index) %>% pull(Category)
-     # Draw category bar
-     circos.rect(
-     xleft = 0, ybottom = 0, xright = 1, ytop = 1,
-     col = category_colors[category_name], border = NA
-          )
-     }
-)
-# Create a barplot track for terms
-circos.trackPlotRegion(
-     factors = unique_terms, ylim = c(0, max(combined_df$Transformed.P.value)),
-     bg.border = NA,
-     panel.fun = function(x, y) {
-          sector_index <- get.cell.meta.data("sector.index")
-          term_data <- combined_df %>% filter(Term == sector_index)
-          term_value <- term_data$Transformed.P.value
-          category_name <- term_data$Category
-          # Use circos.barplot for drawing
-          circos.barplot(
-               term_value, pos = 0.5,
-               col = color_palette(term_value)
-          )
-          circos.text(
-               0.5, term_value + 0.2, term_data$Term_slim,
-               facing="reverse.clockwise", niceFacing = TRUE, cex = 0.5
-          )
-     }
-)
-lgd_term_value <- Legend(
-     at = seq(from = floor(min(combined_df$Transformed.P.value)),
-     to = ceiling(max(combined_df$Transformed.P.value)), by = 1),
-     col_fun = color_palette,
-     title = "Transformed -log10(P-value)"
-)
-draw(lgd_term_value, x = unit(1, "npc") - unit(30, "mm"), y = unit(1, "mm"), just = c("left", "bottom"))
-
-circos.clear()
-#circos.par("track.height" = 0.5, start.degree = 90, gap.degree = 1,canvas.xlim = c(-1.5, 1.5), canvas.ylim = c(-3, 3))  # Adjust track height and gaps
-unique_terms <- combined_df$Term
-circos.initialize(sectors  = unique_terms, xlim = c(0, 1))
-# Create a track for the category bars
-circos.track(
-     ylim = c(0, 1), bg.border = NA, track.height = 0.05,
-     panel.fun = function(x, y) {
-          sector_index <- get.cell.meta.data("sector.index")
-          category_name <- combined_df %>% filter(Term == sector_index) %>% pull(Category)
-          # Draw category bar
-          circos.rect(
-               xleft = 0, ybottom = 0, xright = 1, ytop = 1,
-               col = category_colors[category_name], border = NA
-          )
-     }
-)
-# Create a barplot track for terms
-circos.trackPlotRegion(
-     factors = unique_terms, ylim = c(0, max(combined_df$Transformed.P.value)),
-     bg.border = NA,
-     panel.fun = function(x, y) {
-          sector_index <- get.cell.meta.data("sector.index")
-          term_data <- combined_df %>% filter(Term == sector_index)
-          term_value <- term_data$Transformed.P.value
-          category_name <- term_data$Category
-          # Use circos.barplot for drawing
-          circos.barplot(
-               term_value, pos=0.5,
-               col = color_palette(term_value)
-          )
-     circos.text(
-          0.5, term_value + 0.2, term_data$Term_slim,
-          facing="reverse.clockwise", niceFacing = TRUE, cex = 0.5
-          )
-     }
-)
-lgd_term_value <- Legend(
-     at = seq(from = floor(min(combined_df$Transformed.P.value)),
-     to = ceiling(max(combined_df$Transformed.P.value)), by = 1),
-     col_fun = color_palette,
-     title = "Transformed -log10(P-value)"
-     )
-draw(lgd_term_value, x = unit(1, "npc") - unit(30, "mm"), y = unit(1, "mm"), just = c("left", "bottom"))
-circos.clear()
 ```
 
 Create network for Cytoscape analysis
 
 ```{r}
-significant_correlations_modules=merge(significant_correlations,module_df,by.x="Gene",by.y="gene_id")
-cor_eigen_module=reshape2::melt(WGCNA::cor(MEs0[,-c(1,2)],gene_matrix))
-significant_correlations_modules<-merge(significant_correlations_modules,cor_eigen_module,by="Gene")
-significant_correlations_modules<-subset(significant_correlations_modules,colors.x==colors.y)
-#create network
-# Extract unique genes, microorganisms, and colors
-unique_genes <- as.character(unique(significant_correlations_modules$Gene))
-unique_microorgs <- as.character(unique(significant_correlations_modules$microorg))
-unique_colors <- as.character(unique(significant_correlations_modules$colors.x))
+P_THRESHOLD <- 0.05
+R_THRESHOLD <- 0
 
-# Create a node list data frame
-node_list <- data.frame(name = c(unique_genes, unique_microorgs, unique_colors), 
-                        shared_name = c(unique_genes, unique_microorgs, unique_colors),
-                        Type = c(rep("Gene", length(unique_genes)), 
-                                 rep("Microorganism", length(unique_microorgs)), 
-                                 rep("Module", length(unique_colors))))
 
-# Create an edge list data frame
-edge_list <- data.frame(Source = significant_correlations_modules$Gene, 
-                        Target = significant_correlations_modules$microorg, 
-                        Correlation = significant_correlations_modules$cor.x, 
-                        P_Value = significant_correlations_modules$cor_pval)
+#  Host-Host 
+edges_host <- create_intra_domain_edges(
+  cor_host, 
+  source_col_name = "Host_Gene", 
+  target_col_name = "Target_Gene", 
+  interaction_type = "Host-Host Cor"
+)
 
-# Add edges between genes and modules
-gene_module_edges <- data.frame(Source = significant_correlations_modules$Gene, 
-                                Target = significant_correlations_modules$colors.x, 
-                                Correlation = significant_correlations_modules$cor.y, 
-                                P_Value = NA)
-edge_list <- rbind(edge_list, gene_module_edges)
+# Microbe-Microbe Correlation
+edges_microbe <- create_intra_domain_edges(
+  cor_microbiome, 
+  source_col_name = "Source_KO", 
+  target_col_name = "Target_KO", 
+  interaction_type = "Microbe-Microbe Cor"
+)
 
-# Add edges between microorganisms and modules
-microorg_module_edges <- data.frame(Source = significant_correlations_modules$microorg, 
-                                    Target = significant_correlations_modules$colors.x, 
-                                    Correlation = NA, 
-                                    P_Value = NA)
-edge_list <- rbind(edge_list, microorg_module_edges)
+#  Host-Microbe Correlation
+edges_host_microbe <- create_inter_domain_edges(
+  cor_microbiome_host, 
+  interaction_type = "Host-Microbe Cor"
+)
 
+final_network_edges <- bind_rows(edges_host, edges_microbe, edges_host_microbe)
+node_table<-rbind(data.frame(Source=rownames(cor_host$cor), Type="Gene"),
+                  data.frame(Source=rownames(cor_microbiome$cor), Type="Microbe")
+)
 # Write the node list to a CSV file
-write.csv(node_list, file.path(PROJECT_DIR, "results/node_list.csv"), row.names = FALSE,quote = F)
 
+write.csv(node_table,
+          file.path(PROJECT_DIR, "results/node_list.csv"),
+          row.names = FALSE, quote = FALSE)
 # Write the edge list to a CSV file
-write.csv(edge_list, file.path(PROJECT_DIR, "results/edge_list.csv"), row.names = FALSE,quote = F)
+
+write.csv(final_network_edges, 
+          file.path(PROJECT_DIR, "results/edge_list.csv"), 
+          row.names = FALSE, quote = FALSE)
 
 
 ```
+
+Microbial functional impact analysis
+
+``` {r}
+hm_edges <- final_network_edges %>%
+  dplyr::filter(Interaction == "Host-Microbe Cor")
+#get GO BP annotations
+ann_go <- select(org.Hs.eg.db,
+     keys = unique(hm_edges$Source),
+     columns = c("SYMBOL", "GO"),
+     keytype = "SYMBOL")
+ann_go_bp <- subset(ann_go, ONTOLOGY == "BP")
+ann_go_bp$PROCESS_NAME <- Term(ann_go_bp$GO)
+#get annotation for key biological processes in the epithelium
+
+kerat<-getGene(ann_go_bp,"keratinization")
+immune<-unique(c(getGene(ann_go_bp,"immune system process"),
+                 getGene(ann_go_bp,"regulation of immune system process")
+))
+cell_diff<-getGene(ann_go_bp,"epithelial cell differentiation")
+chr_remod<-getGene(ann_go_bp,"chromatin remodeling")
+wound<-getGene(ann_go_bp,"wound healing")
+reg_infl<-getGene(ann_go_bp,"regulation of inflammatory response")
+apo<-c(getGene(ann_go_bp,"apoptotic process"),getGene(ann_go_bp,"epithelial cell apoptotic process"))
+inate_immune<-getGene(ann_go_bp,"innate immune response")
+cell_migration<-getGene(ann_go_bp,"cell migration")
+cell_surface<-getGene(ann_go_bp,"cell surface receptor signaling pathway")
+#assign function to genes
+hm_edges$Host_Function <- sapply(hm_edges$Source, assign_function)
+
+# top 10% microbes based on average composition across all samples
+microbes<-c(
+"Cutibacterium acnes"
+"Fannyhessea vaginae"
+"Gardnerella swidsinkii"
+"Gardnerella vaginalis"
+"Lactobacillus crispatus"
+"Lactobacillus gasseri"
+"Lactobacillus iners"
+"Lactobacillus jensenii"
+"Prevotella bivia")
+
+plot_data_raw <- hm_edges %>%
+  dplyr::filter(Host_Function != "Other/General", Target %in% microbes, abs(Correlation_R)>0.5) %>%
+  dplyr::filter(!grepl("chromatin", Host_Function)) |>
+  group_by(Target, Host_Function, Direction) %>%
+  summarise(count = n(), .groups = 'drop')
+total_per_microbe <- plot_data_raw %>%
+  group_by(Target) %>%
+  summarise(total_n = sum(count))
+functional_direction_data <- plot_data_raw %>%
+  left_join(total_per_microbe, by = "Target") %>%
+  mutate(percentage = (count / total_n) * 100) %>%
+  mutate(percentage_plot = ifelse(Direction == "Negativa", -percentage, percentage)) %>%
+  mutate()
+
+#Diverging Barplot 
+ggplot(functional_direction_data, aes(x = reorder(Target, percentage_plot, FUN = sum), 
+                                      y = percentage_plot, 
+                                      fill = Host_Function)) +
+  geom_bar(stat = "identity") +
+  geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5) +
+  coord_flip() +
+  scale_fill_brewer(palette = "Set3") +
+  scale_y_continuous(labels = function(x) paste0(abs(x), "%"), 
+                     limits = c(-100, 100)) +
+  labs(title = "Microbial Functional Impact (GO terms)",
+       subtitle = "Negative Correlations (Left) vs Positive Correlations (Right)",
+       x = "Microorganism",
+       y = "Percentage of Interactions (%)",
+       fill = "Biological Process (GO)") +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.text = element_text(size = 8))
+```
+
+Bridges analysis: host nodes exhibiting statistically significant interactions with two or more distinct microbial taxa
+```{r}
+bridges <- hm_edges %>%
+  dplyr::filter(Host_Function != "Other/General", Target %in% microbes$V1) %>%
+  group_by(Source) %>%
+  summarise(
+    n_microbes = n_distinct(Target),
+    microbe_list = paste(unique(Target), collapse = ", "),
+    functions = unique(Host_Function),
+    total_interactions = n()
+  ) %>%
+  dplyr::filter(n_microbes > 1) %>% 
+  arrange(desc(n_microbes))
+bridge_genes <- hm_edges %>%
+  dplyr::filter(Host_Function != "Other/General", Target %in% microbes) %>%
+  group_by(Source) %>%
+  mutate(n_microbes = n_distinct(Target)) %>%
+  dplyr::filter(n_microbes > 1) %>%
+  ungroup()
+bridge_genes_ordered <- bridge_genes %>%
+  arrange(Host_Function)
+row_ann_ordered <- data.frame(
+  unique(data.frame(Source=bridge_genes_ordered$Source,Host_Function=bridge_genes_ordered$Host_Function))
+)
+rownames(row_ann_ordered)<-row_ann_ordered$Source
+row_ann_ordered$Source<-NULL
+gaps <- cumsum(table(row_ann_ordered$Host_Function)[unique(row_ann_ordered$Host_Function)])
+matrix_data <- bridge_genes %>%
+  dplyr::select(Source, Target, Correlation_R) %>%
+  pivot_wider(names_from = Target, values_from = Correlation_R, values_fill = 0) %>%
+  column_to_rownames("Source")
+matrix_ordered <- matrix_data[unique(bridge_genes_ordered$Source), ]
+
+heatmap_colors <- colorRampPalette(c("navy", "white", "firebrick3"))(100)
+
+pheatmap(t(matrix_ordered),
+         annotation_col = row_ann_ordered,
+         color = heatmap_colors,
+         breaks = seq(-1, 1, length.out = 101),
+         main = "Gene Bridges: Host-Microbe Co-regulation",
+         clustering_distance_cols = "euclidean",
+         clustering_method="ward.D2",
+          
+         show_colnames = TRUE,
+         gaps_col  = gaps,
+         cluster_cols = F,
+         fontsize_row = 8,
+         fontsize_col = 10,
+         border_color = NA)
+```
+
+
 
