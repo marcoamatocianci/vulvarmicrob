@@ -1,0 +1,255 @@
+---
+title: "Zymo"
+author: "Marco Amato Cianci"
+date: "2025-10-09"
+output: html_document
+---
+
+```{r echo=FALSE, warning=FALSE}
+suppressMessages(library(rstudioapi))
+suppressMessages(library(dplyr))
+suppressMessages(library(tidyr))
+suppressMessages(library(ggplot2))
+suppressMessages(library(vegan))
+suppressMessages(library(pheatmap))
+
+script_dir <- dirname(getActiveDocumentContext()$path)
+setwd(script_dir)
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_knit$set(root.dir = script_dir)
+```
+
+```{r setup, include=FALSE}
+# colors_vector <- c("#B3D543", "#1C341C", "#82CFF0", "#961A22", "#59933D", "#FBC91D", "#F15A29", "#1C4E9C")
+
+colors <- c(
+"black", "grey20", "#A3E513", "#B3D573", "#B3D593", "#B3D543", "black", "grey20", "grey50", "#961A22", "#B62A32",
+"#C63A42", "#B63A12", "#C63A52", "#F15A29",
+"black", "#77936D", "#59933D", "#1C341C", "#4F40A0", "#1C4E9C",
+"#4F40A0", "#EBD91D", "#FBC91D", "#FFB92D", "#82CFF0", "black"
+)
+
+
+# readstats <- read.delim("/mnt/zaratank/Zymo251008/dataset/first_run/merged_output.tsv")
+
+originaldata <- read.delim("../local/data/zymo_bracken_num_abundances.txt") %>%       tibble::column_to_rownames("name") %>%
+  select(-c(taxonomy_id, taxonomy_lvl))
+p <- list()
+data <- list()
+data_tss_filtered <- list()
+for (type in c("mRNA","POLARIS","DNA")) {
+  data[[type]] <- originaldata[,grep(type,colnames(originaldata))]
+
+  data_tss <- sweep(data[[type]], 2, colSums(data[[type]]), "/")
+  prc <- 0.01
+  nsamples <- round(ncol(data_tss)/10,0)
+  idx <- which(rowSums(data_tss >= prc) >= ifelse(nsamples == 0, 1, nsamples))
+  data_filtered <- as.data.frame(data[[type]][idx,, drop = FALSE]) 
+  data_filtered <- data_filtered %>% filter(rownames(data_filtered) !="Homo sapiens") 
+  filtered_out <- setdiff(x = rownames(data[[type]]), y = rownames(data_filtered))
+  data_tss_filtered[[type]] <-sweep(data_filtered, 2, colSums(data_filtered), "/") 
+
+  readstats <- data.frame(total_reads=colSums(data[[type]]), filtered_out=colSums(filter(data[[type]], rownames(data[[type]]) %in% filtered_out))) %>% tibble::rownames_to_column("samples")
+
+  readstats$human_reads  <- as.numeric(data[[type]] %>% filter( rownames(data[[type]]) =="Homo sapiens")) 
+  readstats$bacterial_reads <- readstats$total_reads - readstats$human_reads
+  readstats <- select(readstats,!total_reads)
+  
+  readstats <- readstats %>% pivot_longer(cols = c(human_reads, filtered_out, bacterial_reads),
+                 names_to = "Type",
+                 values_to = "Reads") 
+  readstats$Reads <- readstats$Reads / 1000000
+  p[[type]] <- ggplot(readstats, aes(x = samples, y = Reads, fill = Type)) +
+    geom_bar(stat = "identity") +
+    labs(title = paste0("Reads per Library : ", type),
+         x = "Library",
+         y = "Number of Reads") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+}
+
+data_prep <- read.delim("../local/data/counts_filt_1.txt")
+data_prep <- data_prep %>% filter(rownames(.) %in% c("Bacillus subtilis", "Listeria monocytogenes", "Staphylococcus aureus", "Enterococcus faecalis", "Limosilactobacillus fermentum", "Salmonella enterica", "Escherichia coli", "Pseudomonas aeruginosa" )) %>% select(-grep("DNA",colnames(data_prep)))
+
+data_tss <- sweep(x = data_prep,MARGIN = 2,STATS = colSums(data_prep),FUN = "/")
+beta_rna <- vegdist(t(data_tss), method = "bray")
+betamtx<-as.matrix(beta_rna)
+corr_mtx <- cor(data_tss, method = "pearson") 
+p <- pheatmap(corr_mtx, 
+         # color = viridis,
+         clustering_distance_rows = beta_rna,
+         clustering_distance_cols = beta_rna)
+
+p
+data_tss$Species <- rownames(data_tss)
+
+
+zymo_data <- read.delim("../local/data/microzymodata.tsv") %>% tibble::column_to_rownames("Species")
+zymo_data[is.na(zymo_data)] <- 0
+zymo_data <- zymo_data[!rownames(zymo_data) %in% c("Saccharomyces cerevisiae","Cryptococcus neoformans"),]
+rownames(zymo_data)[rownames(zymo_data) == "Lactobacillus fermentum"] <- "Limosilactobacillus fermentum"
+
+data_tss_zymo <- merge(data_tss,zymo_data,by = 0,all.x = T, all.y = T)%>% tibble::column_to_rownames("Row.names")
+data_tss_zymo$Species <- NULL
+data_tss_zymo <- sweep(data_tss_zymo,2,colSums(data_tss_zymo),"/")
+data_tss_zymo$Species <- rownames(data_tss_zymo)
+data_long <- pivot_longer(data_tss_zymo, cols = -Species)
+ data_long$Species <- factor(data_long$Species, levels =  c("Bacillus subtilis", "Listeria monocytogenes", "Staphylococcus aureus", "Enterococcus faecalis", "Limosilactobacillus fermentum", "Salmonella enterica", "Escherichia coli", "Pseudomonas aeruginosa" ))
+data_long$type <- ifelse(grepl("mRNA" , data_long$name),
+                         "mRNA",
+                         ifelse(
+                           grepl("POLARIS", data_long$name),
+                           "POLARIS",
+                           ifelse(grepl("_DNA_", data_long$name), "DNA", "ZYMO")
+                         ))
+data_long$value[is.na(data_long$value)] <- 0
+p <- list()
+# species_levels <- c(
+#    "Bacillus subtilis","Bacillus spizizenii", "Bacillus cereus", "Bacillus anthracis","Listeria monocytogenes",   "Staphylococcus aureus",   "Enterococcus faecalis", "Enterococcus faecium", "Enterococcus sp. MSG4854", "Enterococcus sp. DIV2451a", "Enterococcus sp. DIV0197b",  "Limosilactobacillus fermentum", "Lactobacillus iners", "Salmonella enterica","Escherichia coli", "Pseudomonas aeruginosa", "Pseudomonas chlororaphis", "Pseudomonas putida",  "Saccharomyces cerevisiae", "Cryptococcus deneoformans",  "Cutibacterium acnes", "Micrococcus luteus", "Clostridioides difficile",  "Klebsiella pneumoniae", "Acinetobacter baumannii", "Ascochyta rabiei", "Malassezia restricta")
+
+species_colors <- c(
+  "Bacillus subtilis"          = "#BCDA1A",
+  "Bacillus spizizenii"         = "#D3F03A",
+  "Bacillus cereus"             = "#D3E867",
+  "Bacillus anthracis"          = "#C1D362",
+  "Listeria monocytogenes"      = "#314004",
+  "Staphylococcus aureus"       = "#83CAFF",
+  "Enterococcus faecalis"       = "#961A22",
+  "Enterococcus faecium"        = "#a51d2d",
+  "Enterococcus sp. MSG4854"  = "#BF4040",
+  "Enterococcus sp. DIV2451a"  = "#CB5858",
+  "Enterococcus sp. DIV0197b"  = "#CE7070",
+  "Limosilactobacillus fermentum" = "#579D1C",
+  "Lactobacillus iners"         = "#598039",
+
+  "Salmonella enterica"         = "#FFD320",
+  "Escherichia coli"            = "#FF420E",
+  "Pseudomonas aeruginosa"      = "#004586",
+  "Pseudomonas chlororaphis"    = "#2171B5",
+  "Pseudomonas putida"          = "#4292C6",
+  
+  "Cutibacterium acnes"         = "#252525",
+  "Micrococcus luteus"          = "#525252",
+  "Clostridioides difficile"    = "#737373",
+  "Klebsiella pneumoniae"       = "#969696",
+  "Acinetobacter baumannii"     = "#BDBDBD",
+  "Ascochyta rabiei"            = "#D9D9D9",
+  "Malassezia restricta"        = "#F0F0F0",
+
+  "Saccharomyces cerevisiae"    = "#A14D92",
+  "Cryptococcus deneoformans"   = "#743268"
+)
+
+#data_long$Species <- factor(data_long$Species, levels =  species_levels)
+
+
+for (i in unique(data_long$type)) {
+  p[[i]] <- ggplot(filter(data_long, type == i), aes(x = name, y = value, fill = Species)) +
+  geom_col(width = 0.98) +
+  scale_fill_manual(values = species_colors)+
+  theme_minimal() 
+  
+}
+p
+```
+
+```{r}
+morphology_map <- tibble(
+  Taxon = c("Enterococcus_faecalis", "Staphylococcus_aureus", "Listeria_monocytogenes",
+            "Bacillus_subtilis", "Limosilactobacillus fermentum", 
+            "Escherichia_coli", "Salmonella_enterica", "Pseudomonas_aeruginosa"),
+  Morphology = c("Ovoid_gram_pos", "Ovoid_gram_pos", "Ovoid_gram_pos", 
+                 "Rod_gram_pos", "Rod_gram_pos", 
+                 "Rod_gram_neg", "Rod_gram_neg", "Rod_gram_neg")
+)
+morphology_map$Taxon <- sub("_"," ",morphology_map$Taxon)
+
+```
+
+## Correzione
+
+```{r}
+library(metacal)
+library(dplyr)
+library(tibble)
+
+# Esempio: Vettore delle abbondanze relative osservate nel tuo RNA mock (TRIzol)
+correction_factors <- list()
+for (mock in c("MC_1_mRNA_LIB","MC_2_mRNA_LIB","MC_5_mRNA_LIB","MC_6_mRNA_LIB")) {
+    observed_mock <- data_tss_zymo[,mock]
+    names(observed_mock) <- rownames(data_tss_zymo)
+    observed_mock <- matrix(
+      observed_mock,
+      ncol = 1,
+      dimnames = list(names(observed_mock),"Mock_sample1"))
+    # Esempio: Vettore delle abbondanze relative teoriche attese (o DNA mock)
+    expected_mock <- filter(data_long,type == "ZYMO", name == "Genomic.DNA....")$value/100
+    names(expected_mock) <- filter(data_long,type == "ZYMO", name == "Genomic.DNA....")$Species
+    expected_mock <- matrix(
+      expected_mock,
+      ncol = 1,
+      dimnames = list(names(expected_mock),"Mock_sample1"))
+
+    # 4. Stima del bias di estrazione specifico per specie
+    # Utilizziamo la funzione base di metacal per calcolare il vettore dei bias
+    # (metacal gestisce matematicamente i dati composizionali)
+    bias_estimate <- estimate_bias(observed_mock, expected_mock,2)
+
+    # Convertiamo in dataframe per facilitare le operazioni successive
+    species_bias <- tibble(
+      Taxon =rownames(observed_mock),
+      Bias = as.numeric(coef(bias_estimate))
+    )
+
+    # 5. Calcolo dei Fattori di Correzione Morfologica
+    # Come indicato da Rauer, calcoliamo la media geometrica del bias per ciascun gruppo
+    correction_factors[[mock]] <- species_bias %>%
+      left_join(morphology_map, by = "Taxon") %>%
+      group_by(Morphology) %>%
+      summarise(
+        Correction_Factor = exp(mean(log(Bias))) # Formula della media geometrica
+      )
+
+}
+correction_factors <- bind_rows(correction_factors)
+correction_factors$sample <- rep(c("MC 1","MC 2","MC 3","MC 4"),each=3)
+correction_factors$Morphology <- factor(correction_factors$Morphology,levels=c("Ovoid_gram_pos","Rod_gram_pos","Rod_gram_neg"))
+
+ggplot(correction_factors,aes(x=Morphology,y=Correction_Factor,color=Morphology,shape=sample))+
+  geom_point(size = 4)+
+  scale_color_manual(values = c("#de3a3aff","#d59f22ff","#59ae2cff"))+
+  ylab("Extraction Bias")+
+  xlab("")+
+  theme_bw()
+
+correction_factors <- correction_factors %>% group_by(Morphology) %>% summarise(Correction_Factor=mean(Correction_Factor))
+
+write.table(file = "../local/data/correction_factors.txt",x = correction_factors)
+```
+```{r}
+### Normalization TSS
+kdata_filt <- read.delim("../results/counts_decont_filtered.txt", sep="\t")
+
+kdata_frac<-sweep(kdata_filt,2,colSums(kdata_filt),"/")
+
+morphologydf <- read.csv("../local/data/bacteria_morphology_classification.csv")
+
+morphologydf <- morphologydf %>% filter(!Rauer_Classification == "N/A")
+
+setdiff(rownames(kdata_frac),morphologydf$Species)
+write.table(file = "../local/data/morphology_map.txt",x = morphologydf)
+
+```
+
+# VULVAR CORRECTED
+
+```{r}
+
+vulvar_corrected <- kdata_filt %>% as.data.frame() %>% tibble::rownames_to_column("Species") %>% inner_join(morphologydf,by="Species") %>% dplyr::rename( "Morphology" = "Rauer_Classification") %>% left_join(correction_factors,by="Morphology") %>% mutate(across(starts_with("H_"), ~ .x / Correction_Factor)) %>% select(-c("Morphology","Correction_Factor","Rationale")) %>% tibble::column_to_rownames("Species") 
+
+vulvar_corrected_frac <- sweep(x = vulvar_corrected,2,colSums(vulvar_corrected),"/") 
+
+colSums(vulvar_corrected_frac)
+write.table(file = "../results/counts_decont_filtered_rauer_corrected.txt",x = vulvar_corrected, sep="\t", quote = F)
+
+```
