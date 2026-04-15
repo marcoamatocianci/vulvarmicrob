@@ -37,7 +37,7 @@ rownames(kdata)<-gsub("'","_",rownames(kdata))
 head(kdata[,1:round(ncol(kdata)/4,0)])
 
 #Dataframe metadata
-meta <- read.xlsx("../local/data/Vulvodinia_Samples.xlsx")
+meta <- read.xlsx("../local/data/Metadata_Samples.xlsx")
 kdataf <- sweep(kdata,2,colSums(kdata),"/")
 ```
 
